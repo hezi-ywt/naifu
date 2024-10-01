@@ -151,14 +151,16 @@ class StoreBase(Dataset):
                 e.pixel.shape == shape
             ), f"{e.pixel.shape} != {shape} for the same batch"
 
-        pixel = torch.stack(pixels, dim=0).contiguous()
+        pixels = torch.stack(pixels, dim=0).contiguous()
         cropped_sizes = torch.stack(cropped_sizes)
         original_sizes = torch.stack(original_sizes)
         crop_pos = torch.stack(crop_pos)
+        
+
 
         return {
             "prompts": prompts,
-            "pixels": pixel,
+            "pixels": pixels,
             "is_latent": is_latent,
             "target_size_as_tuple": cropped_sizes,
             "original_size_as_tuple": original_sizes,
