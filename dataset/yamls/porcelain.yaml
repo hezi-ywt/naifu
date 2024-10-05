@@ -1,5 +1,8 @@
 source:
-    - /data/train_data/arrow/00000.arrow
+    - /data/sdxl/db_arrow/*.arrow
+    - /data/sdxl/newdb_arrow1/*.arrow
+    - /data/sdxl/e621_arrow/*.arrow
+    
 
 
 
