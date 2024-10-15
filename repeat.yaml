@@ -1,28 +1,6 @@
 source:
-- /data/sdxl/db_arrow/*.arrow:
-    repeat: 1
-- /data/sdxl/newdb_arrow1/*.arrow:
-    repeat: 1
-- /data/sdxl/e621_arrow/*.arrow:
-    repeat: 1
-- /data/sdxl/ws_arrow2/*.arrow:
-    repeat: 5
-- /data/sdxl/ws_arrow3/*.arrow:
-    repeat: 5
 - /data/sdxl/artist_arrow_dir/kedama_milk/*.arrow:
     repeat: 5
-- /data/char_arrow/amagi/*.arrow:
-    repeat: 10
-- /data/char_arrow/howe/*.arrow:
-    repeat: 20
-- /data/char_arrow/ph1/*.arrow:
-    repeat: 30
-- /data/char_arrow/ph2/*.arrow:
-    repeat: 20
-- /data/char_arrow/ph3/*.arrow:
-    repeat: 30
-- /data/char_arrow/unzen/*.arrow:
-    repeat: 20
 - /data/sdxl/artist_arrow_dir/amyu_(amm_asl_pa)/*.arrow:
     repeat: 20
 - /data/sdxl/artist_arrow_dir/hoji_(hooooooooji1029)/*.arrow:
@@ -535,10 +513,3 @@ source:
     repeat: 20
 - /data/sdxl/artist_arrow_dir/mr_goblin/*.arrow:
     repeat: 20
-
-
-
-
-
-
-            

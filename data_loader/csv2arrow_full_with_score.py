@@ -42,7 +42,7 @@ def parse_data(data):
         print(f'Error: {e}')
         return
 
-def make_arrow_from_dir(dataset_root, arrow_dir, meta_data=None, start_id=0, end_id=-1):
+def make_arrow_from_dir(dataset_root, arrow_dir, meta_data=None, score_data=None, start_id=0, end_id=-1):
     image_ext = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'tiff']
     data = []
     
@@ -50,18 +50,25 @@ def make_arrow_from_dir(dataset_root, arrow_dir, meta_data=None, start_id=0, end
         for file in files:
             if file.split('.')[-1].lower() in image_ext:
                 image_path = os.path.join(root, file)
-
+                file_name = os.path.splitext(os.path.basename(image_path))[0]
                 if meta_data:
-                    file_name = os.path.splitext(os.path.basename(image_path))[0]
+                    
                     meta_info = meta_data.get(file_name, None)
                     if not meta_info:
                         print(f"not find meta info for{file_name}")
                         meta_info = {}
                 else:
                     meta_info = {}
+                
+                if score_data:
 
+                    score = score_data.get(f"danbooru_{file_name}", 0)
 
-
+                    if score < 0.8:
+                        continue
+                    
+                    meta_info["aesthetic_score_1"] = score
+                    
                 txt_path = image_path.rsplit('.', 1)[0] + '.txt'
         
                 if os.path.exists(txt_path):
@@ -111,23 +118,25 @@ def make_arrow_from_dir(dataset_root, arrow_dir, meta_data=None, start_id=0, end
             gc.collect()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Convert images and metadata to Arrow format.")
-    parser.add_argument('--csv_root', type=str, required=True, help='Path to your CSV file or directory containing images.')
-    parser.add_argument('--output_arrow_data_path', type=str, required=True, help='Path for storing the created Arrow file.')
-    parser.add_argument('--pool_num', type=int, default=1, help='Number of processes for multiprocessing (default: 1).')
-    parser.add_argument('--json_path', type=str, default=None, help='Path to the JSON file containing metadata (optional).')
+    # parser = argparse.ArgumentParser(description="Convert images and metadata to Arrow format.")
+    # parser.add_argument('--csv_root', type=str, required=True, help='Path to your CSV file or directory containing images.')
+    # parser.add_argument('--output_arrow_data_path', type=str, required=True, help='Path for storing the created Arrow file.')
+    # parser.add_argument('--pool_num', type=int, default=1, help='Number of processes for multiprocessing (default: 1).')
+    # parser.add_argument('--json_path', type=str, default=None, help='Path to the JSON file containing metadata (optional).')
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    csv_root = args.csv_root
-    output_arrow_data_path = args.output_arrow_data_path
-    pool_num = args.pool_num
-    json_path = args.json_path
+    csv_root = "/data/sdxl/db"
+    output_arrow_data_path = "/app/hfd/ws_arrow3"
+    pool_num = 8
+    pool = Pool(pool_num)
+    json_path = "/app/hfd/caption/danbooru_metainfos_full_20241001.json"
+    score_path = "/app/hfd/caption/ws_danbooru.json"
 
     meta_data = load_meta_data(json_path) if json_path else None
-    pool = Pool(pool_num)
+    score_data = load_meta_data(score_path) if json_path else None
     if os.path.isdir(csv_root):
-        make_arrow_from_dir(csv_root, output_arrow_data_path, meta_data)
+        make_arrow_from_dir(csv_root, output_arrow_data_path, meta_data, score_data)
     else:
         print("The input file format is not supported. Please input a CSV or JSON file.")
         sys.exit(1)
