@@ -8,6 +8,13 @@ from common.logging import logger
 from modules.sdxl_model import StableDiffusionModel
 from modules.scheduler_utils import apply_snr_weight
 from lightning.pytorch.utilities.model_summary import ModelSummary
+from torch.utils.data import DataLoader
+
+import random
+from IndexKits.index_kits.sampler import DistributedSamplerWithStartIndex, BlockDistributedSampler
+from data_loader.arrow_load_stream_euge_modified import TextImageArrowStream
+import logging
+logger = logging.getLogger("hezi")
 
 def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
     model_path = config.trainer.model_path
@@ -17,13 +24,43 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
         device=fabric.device
     )
     dataset_class = get_class(config.dataset.get("name", "data.AspectRatioDataset"))
-    dataset = dataset_class(
-        batch_size=config.trainer.batch_size,
-        rank=fabric.global_rank,
-        dtype=torch.float32,
-        **config.dataset,
-    )
-    dataloader = dataset.init_dataloader()
+
+    # dataset = dataset_class(
+    #     batch_size=config.trainer.batch_size,
+    #     rank=fabric.global_rank,
+    #     dtype=torch.float32,
+    #     **config.dataset,
+    # )
+    # dataloader = dataset.init_dataloader()
+
+    world_size = fabric.world_size
+    dataset = TextImageArrowStream(args="args",
+                                   resolution=config.trainer.resolution,
+                                   random_flip=config.dataset.random_flip,
+                                   log_fn=logger.info,
+                                   index_file=config.dataset.index_file,
+                                   multireso=config.dataset.multireso,
+                                   batch_size=config.trainer.batch_size,
+                                   world_size=world_size,
+                                #    random_shrink_size_cond=config.trainer.batch_size.random_shrink_size_cond,
+                                #    merge_src_cond=config.trainer.batch_size.merge_src_cond,
+                                #    uncond_p=args.uncond_p,
+                                #    text_ctx_len=args.text_len,
+                                #    tokenizer=tokenizer,
+                                #    uncond_p_t5=args.uncond_p_t5,
+                                #    text_ctx_len_t5=args.text_len_t5,
+                                #    tokenizer_t5=tokenizer_t5,
+                                   )
+
+    if config.dataset.multireso:
+        sampler = BlockDistributedSampler(dataset, num_replicas=world_size, rank=fabric.global_rank, seed=config.trainer.seed,
+                                          shuffle=False, drop_last=True, batch_size=config.trainer.batch_size)
+    else:
+        sampler = DistributedSamplerWithStartIndex(dataset, num_replicas=world_size, rank=fabric.global_rank, seed=config.trainer.seed,
+                                                   shuffle=False, drop_last=True)
+        
+    dataloader = DataLoader(dataset, batch_size=config.trainer.batch_size, shuffle=False, sampler=sampler,
+                        num_workers=config.dataset.num_workers, pin_memory=True, drop_last=True)
     
     params_to_optim = [{'params': model.model.parameters()}]
     if config.advanced.get("train_text_encoder_1"):
@@ -97,7 +134,7 @@ class SupervisedFineTune(StableDiffusionModel):
     def forward(self, batch):
         
         advanced = self.config.get("advanced", {})
-        if not batch["is_latent"]:
+        if True:
             self.first_stage_model.to(self.target_device)
             latents = self.encode_first_stage(batch["pixels"].to(self.first_stage_model.dtype))
             if torch.any(torch.isnan(latents)):
@@ -113,9 +150,9 @@ class SupervisedFineTune(StableDiffusionModel):
 
         # Sample noise that we'll add to the latents
         noise = torch.randn_like(latents, dtype=model_dtype)
-        if advanced.get("offset_noise"):
+        if advanced.get("offset_noise") and random.random() < 0.5:
             offset = torch.randn(latents.shape[0], latents.shape[1], 1, 1, device=latents.device)
-            noise = torch.randn_like(latents) + float(advanced.get("offset_noise_val")) * offset
+            noise = torch.randn_like(latents) + float(advanced.get("offset_noise_val")) * offset * random.random()
 
         bsz = latents.shape[0]
 

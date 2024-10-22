@@ -151,16 +151,14 @@ class StoreBase(Dataset):
                 e.pixel.shape == shape
             ), f"{e.pixel.shape} != {shape} for the same batch"
 
-        pixels = torch.stack(pixels, dim=0).contiguous()
+        pixel = torch.stack(pixels, dim=0).contiguous()
         cropped_sizes = torch.stack(cropped_sizes)
         original_sizes = torch.stack(original_sizes)
         crop_pos = torch.stack(crop_pos)
-        
-
 
         return {
             "prompts": prompts,
-            "pixels": pixels,
+            "pixels": pixel,
             "is_latent": is_latent,
             "target_size_as_tuple": cropped_sizes,
             "original_size_as_tuple": original_sizes,
@@ -354,8 +352,8 @@ class DirectoryImageStore(StoreBase):
             img = np.array(_img)
         elif _img.mode == "RGBA":
             # transparent images
-            baimg = Image.new('RGB', img.size, (255, 255, 255))
-            baimg.paste(img, (0, 0), img)
+            baimg = Image.new('RGB', _img.size, (255, 255, 255))
+            baimg.paste(_img, (0, 0), _img)
             img = np.array(baimg)
         else:
             img = np.array(_img.convert("RGB"))

@@ -198,31 +198,38 @@ class TextImageArrowStream(Dataset):
     def get_tags(
         self,
         ind,
-    ):
-        meta_info = self.index_manager.get_attribute(ind, 'meta_info')
+    ):  
+        try:
+            meta_info = self.index_manager.get_attribute(ind, 'meta_info')
 
-        if random.random() < 0.001:
-            return ""
-        if random.random() < 0.001:
-            return 'Generate a random image'
-
-
-        if len(meta_info) > 1:
+            if random.random() < 0.001:
+                return ""
+            if random.random() < 0.001:
+                return 'Generate a random image'
 
 
-            if "danbooru_quality_tags" in meta_info:
-                if random.random() < 0.65:
-                    try:
-                        return eugebooru.get_ata_caption(meta_info, self.dataset_hook)
-                    except Exception as e:
-                        print(f"Error retrieving tags: {e}")
-                        return self.index_manager.get_attribute(ind, 'tags')
+            if len(meta_info) > 1:
+
+
+                if "danbooru_quality_tags" in meta_info:
+                    if random.random() < 0.65:
+                        try:
+                            return eugebooru.get_ata_caption(meta_info, self.dataset_hook)
+                        except Exception as e:
+                            print(f"Error retrieving tags: {e}")
+                            return self.index_manager.get_attribute(ind, 'tags')
+                    else:
+                        return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en')
                 else:
                     return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en')
-            else:
-                return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en')
-    
 
+            if random.random() < 0.001:
+                return ""
+            if random.random() < 0.001:
+                return 'Generate a random image'
+            
+        except Exception as e:
+            return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en')
 
 
 
