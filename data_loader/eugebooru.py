@@ -466,13 +466,14 @@ def get_ata_caption(
     dataset_hook,
     **kwargs,
 ):
-    if random.random() < 0.1:  # 10% 概率返回空描述
+    if random.random() < 0.001:  # 1% 概率返回空描述
         return ""
     captions = []
     if img_md.get('caption_base'):
         captions.append('caption')
-    if img_md.get('description'):
-        captions.append('description')
+        
+    # if img_md.get('description'):
+    #     captions.append('description')
 
     if len(captions) == 0:
         logger.warning(f"no caption found for image: {img_md}")
@@ -541,10 +542,16 @@ def get_ata_tags(
 
                 # 不会删除任何角色标
                 character_tag_append_prob = max(0, 1 - (character_benchmark / count))
-                if character_tag_append_prob > 0 and random.random() < character_tag_append_prob:  # 后置角色标
-                    tags.append(fmt2std(character))
+                if character_tag_append_prob > 0 and random.random() < 0.35:  # 后置角色标
+                    if random.random()<0.7:
+                        tags.append(f"character:{fmt2std(character)}")
+                    else:
+                        tags.append(f"character:{fmt2std(character)}")
                 else:
-                    tags.insert(0, f"character:{fmt2std(character)}")  # 固定前置角色标
+                    if random.random()<0.7:
+                        tags.insert(0,f"character:{fmt2std(character)}")
+                    else:
+                        tags.insert(0, f"character:{fmt2std(character)}")  # 固定前置角色标
                 min_character_count = min(min_character_count, count)
 
             if "solo" in tags:
@@ -575,7 +582,7 @@ def get_ata_tags(
                     else:
                         has_artist = True
                         # 如果画师比角色更冷门，则前置画师标签
-                        if count <= min_character_count:
+                        if count <= min_character_count and random.random() <= 0.2:
                             tags.insert(0, f"artist:{fmt2std(artist)}")  # 固定前置画师标签
                         else:
                             tags.append(fmt2std(artist))
@@ -590,9 +597,11 @@ def get_ata_tags(
                     epoch_tag_counter.setdefault('artist', {}).setdefault(artist, 0)
                     epoch_tag_counter['artist'][artist] += 1
 
+         # 前置 1girl
         if added_sp == False:
-            tags = [fmt2std(tag) for tag in special_tags] + tags
-            added_sp = True
+            if random.random() < 0.95:
+                tags = [fmt2std(tag) for tag in special_tags] + tags
+                added_sp = True
 
 
 
@@ -641,7 +650,7 @@ def get_ata_tags(
     # 标签洗牌
     tags = shuffle_tags(
         tags,
-        fixed_tag_dropout_prob=0,
+        fixed_tag_dropout_prob=0.003,
         flex_tag_dropout_prob=0.05,
         tags_shuffle_prob=0.2,
         tags_shuffle_rate=0.2,
@@ -657,7 +666,8 @@ def get_ata_tags(
     # )
 
     # 格式化标签
-    tags = [fmt2train_ata(tag) for tag in tags]
+    if random.random() <= 0.95:
+        tags = [fmt2train_ata(tag) for tag in tags]
 
     # 去重
     tags = deduplicate(tags)

@@ -212,7 +212,7 @@ class TextImageArrowStream(Dataset):
 
 
                 if "danbooru_quality_tags" in meta_info:
-                    if random.random() < 0.65:
+                    if random.random() < 0.85:
                         try:
                             return eugebooru.get_ata_caption(meta_info, self.dataset_hook)
                         except Exception as e:
