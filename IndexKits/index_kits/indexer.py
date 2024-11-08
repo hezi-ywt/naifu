@@ -550,7 +550,7 @@ class ArrowIndexV2(object):
         return batch_data
 
     @staticmethod
-    def resize_and_crop(image, target_size, resample=Image.LANCZOS, crop_type='random'):
+    def resize_and_crop(image, target_size, resample=Image.LANCZOS, crop_type='random',is_list=False):
         """
         Resize image without changing aspect ratio, then crop the center/random part.
 
@@ -574,6 +574,9 @@ class ArrowIndexV2(object):
             The position of the cropped part. (crop_left, crop_top)
         """
         tw, th = target_size
+        if is_list:
+            image2 = image[1]
+            image = image[0] 
         w, h = image.size
 
         tr = th / tw
@@ -598,8 +601,16 @@ class ArrowIndexV2(object):
         else:
             raise ValueError(f'crop_type must be center or random, but got {crop_type}')
 
-        image = image.crop((crop_left, crop_top, crop_left + tw, crop_top + th))
-        return image, (crop_left, crop_top)
+        if is_list:
+            image = image.crop((crop_left, crop_top, crop_left + tw, crop_top + th))
+            image2 = image2.resize((resize_width, resize_height), resample=resample)
+            image2 = image2.crop((crop_left, crop_top, crop_left + tw, crop_top + th))
+
+            return (image, image2), (crop_left, crop_top)
+        
+        else:
+            image = image.crop((crop_left, crop_top, crop_left + tw, crop_top + th))
+            return image, (crop_left, crop_top)
 
 
 class IndexV2Builder(object):

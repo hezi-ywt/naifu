@@ -271,7 +271,10 @@ class Trainer:
                 fabric_module = getattr(self.model, "model", None)
                 if hasattr(self.model, "get_module"):
                     fabric_module = self.model.get_module()
-                    
+                
+                # 确保模型被正确设置
+                assert fabric_module is not None, "Model setup failed."
+
                 with fabric.no_backward_sync(fabric_module, enabled=is_accumulating):
                 # with torch.autograd.detect_anomaly():
                     loss = self.model(batch)

@@ -484,7 +484,7 @@ class MultiIndexV2(object):
         return self.buckets[i].get_columns(ind - bias, **kwargs)
 
     @staticmethod
-    def resize_and_crop(image, target_size, resample=Image.LANCZOS, crop_type='random'):
+    def resize_and_crop(image, target_size, resample=Image.LANCZOS, crop_type='random', is_list=False):
         """
         Resize image without changing aspect ratio, then crop the center/random part.
 
@@ -507,7 +507,7 @@ class MultiIndexV2(object):
         crop_pos: tuple
             The position of the cropped part. (crop_left, crop_top)
         """
-        return ArrowIndexV2.resize_and_crop(image, target_size, resample, crop_type)
+        return ArrowIndexV2.resize_and_crop(image, target_size, resample, crop_type, is_list)
 
 
 class MultiResolutionBucketIndexV2(MultiIndexV2):
