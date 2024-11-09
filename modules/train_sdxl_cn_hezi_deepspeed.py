@@ -9,6 +9,7 @@ from modules.sdxl_model_cn import StableDiffusionModelCN
 from modules.scheduler_utils import apply_snr_weight
 from lightning.pytorch.utilities.model_summary import ModelSummary
 from torch.utils.data import DataLoader
+from modules.sdxl_utils import get_hidden_states_sdxl 
 
 import random
 from IndexKits.index_kits.sampler import DistributedSamplerWithStartIndex, BlockDistributedSampler
@@ -132,21 +133,16 @@ class SupervisedFineTune(StableDiffusionModelCN):
                 logger.info("NaN found in latents, replacing with zeros")
                 latents = torch.where(torch.isnan(latents), torch.zeros_like(latents), latents)
 
-
-            
+            # hidden_states1, hidden_states2, pool2 = get_hidden_states_sdxl(batch["prompts"], self.text_encoders, self.tokenizers, self.target_device, self.weight_dtype)
+            # hidden_states = torch.cat([hidden_states1, hidden_states2], dim=2).to(self.target_device).to(model_dtype)
+            # encoder_hidden_states = [hidden_states, pool2]
             encoder_hidden_states = self.encode_text(batch["prompts"])
             noise = torch.randn_like(latents).to(self.target_device).to(model_dtype)
             timesteps = torch.randint(0, self.noise_scheduler.config.num_train_timesteps, (latents.shape[0],)).long().to(self.device)
 
-
             add_time_ids = torch.cat(
                 [self.compute_time_ids(s, c, t) for s, c, t in zip(batch["original_size_as_tuple"], batch["crop_coords_top_left"], batch['target_size_as_tuple'])]
             ).to(self.device)
-            # print("add_time_ids", add_time_ids.dtype)
-            # print("encoder_hidden_states", encoder_hidden_states[0].shape, encoder_hidden_states[1].dtype)
-            # print("latents", latents.dtype)
-            # print("batch['pixels']", batch['pixels'].dtype) 
-            # print("batch['conditioning_pixels']", batch['conditioning_pixels'].dtype)
 
             if advanced.get("offset_noise") and random.random() < 0.5:
                 offset = torch.randn(latents.shape[0], latents.shape[1], 1, 1, device=latents.device)
@@ -221,7 +217,7 @@ class SupervisedFineTune(StableDiffusionModelCN):
             loss = loss.mean()  # mean over batch dimension
         else:
             loss = torch.nn.functional.mse_loss(noise_pred.float(), target.float(), reduction="mean")
-
+        
         if torch.isnan(loss).any() or torch.isinf(loss).any():
             raise FloatingPointError("Error infinite or NaN loss detected")
 

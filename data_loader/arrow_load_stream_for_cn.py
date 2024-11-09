@@ -222,10 +222,10 @@ class TextImageArrowStream(Dataset):
                             print(f"Error retrieving tags: {e}")
                             return self.index_manager.get_attribute(ind, 'tags')
                     else:
-                        return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en').relace("|||", "")
+                        return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en').replace("|||", "")
                     
                 else:
-                    return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en')
+                    return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en').replace("|||", "")
 
             if random.random() < 0.001:
                 return ""
@@ -233,7 +233,7 @@ class TextImageArrowStream(Dataset):
                 return 'Generate a random image'
             
         except Exception as e:
-            return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en')
+            return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en').replace("|||", "")
 
 
 
