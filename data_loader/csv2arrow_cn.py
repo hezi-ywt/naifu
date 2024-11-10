@@ -145,17 +145,26 @@ if __name__ == '__main__':
     df = pd.read_parquet(file_path)
 
     data_path = "/mnt/g/hf/danbooru_newest-webp-4Mpixel_pose/images/0000"
-    output_arrow_data_path = "/mnt/g/hf/danbooru_newest-webp-4Mpixel_pose_arrow/images/0000"
-
-
+    output_arrow_data_path = "/mnt/g/hf/danbooru_newest-webp-4Mpixel_pose_arrow/images_test/0_200"
+    if not os.path.exists(output_arrow_data_path):
+        os.makedirs(output_arrow_data_path)
     file_list = []
-    #walk 
-    for dirpath, dirnames, filenames in os.walk(data_path):
-        for filename in filenames:
-            if filename.split('.')[-1].lower() in ['jpg', 'jpeg', 'png', 'webp']:
-                if filename.endswith('_pose.jpg'):
-                    continue
-                file_list.append(os.path.join(dirpath, filename))
+    for id in range(200):
+        data_path = f"/mnt/g/hf/danbooru_newest-webp-4Mpixel_pose/images/{str(id).zfill(4)}"
+        if not os.path.exists(data_path):
+            continue
+
+        
+    
+        #walk 
+        for dirpath, dirnames, filenames in os.walk(data_path):
+            for filename in tqdm(filenames):
+                if filename.split('.')[-1].lower() in ['jpg', 'jpeg', 'png', 'webp']:
+                    if filename.endswith('_pose.jpg'):
+                        continue
+                    file_list.append(os.path.join(dirpath, filename))
+                    
+                    
     print(file_list)
     print(f"Total images: {len(file_list)}")
     print(f"Start making arrow files")

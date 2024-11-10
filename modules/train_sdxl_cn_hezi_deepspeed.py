@@ -189,9 +189,17 @@ class SupervisedFineTune(StableDiffusionModelCN):
                     return_dict=False,
                 )
 
-        # if (batch['conditioning_pixels'] == batch['pixels']).all():
+        if (batch['conditioning_pixels'] == batch['pixels']).all():
 
-        #     print("conditioning_pixels == pixels")
+            print("conditioning_pixels == pixels")
+        # print(batch['conditioning_pixels'])
+        # print(batch['pixels'])
+        # # 保存每张图像
+        # from scrips.test_util import batch_tensor_to_image
+        # batch_tensor_to_image(batch['conditioning_pixels'], "output_dir1")
+        # batch_tensor_to_image(batch['pixels'], "output_di2")
+
+        
         noise_pred = self.unet(
             noisy_model_input, timesteps,  encoder_hidden_states[0], added_cond_kwargs={"time_ids": add_time_ids, "text_embeds": encoder_hidden_states[1]}, \
             down_block_additional_residuals = down_block_res_samples,

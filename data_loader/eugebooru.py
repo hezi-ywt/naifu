@@ -441,7 +441,7 @@ def get_tags(
             tags.append(f"meta:{reso_tag}")
 
     # Remove copyright tags
-    if random.random() < 0.95:
+    if random.random() < 0.5:
         tags = remove_tags_by_type(tags, 'copyright')
 
     tags = shuffle_tags(
@@ -572,7 +572,8 @@ def get_ata_tags(
             for artist in artists:
                 has_artist = False
                 count = epoch_tag_counter.get('artist', {}).get(artist, 1)
-                if (year is not None) and (year < '2020') and (random.random() < 0.3):  # 排除过于稀有或过时的艺术家
+                
+                if (year is not None) and (int(year) < 2020) and (random.random() < 0.3):  # 排除过于稀有或过时的艺术家
                     continue
     
                 else:  # 按概率添加艺术家标签
@@ -630,7 +631,7 @@ def get_ata_tags(
         if random.random() < 0.5:
             tags.append(f"{year}")
     if period:
-        if random.random() < 0.85:
+        if random.random() < 0.75:
             tags.append(period)
 
 

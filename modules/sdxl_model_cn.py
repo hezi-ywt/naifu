@@ -67,11 +67,16 @@ class StableDiffusionModelCN(pl.LightningModule):
         self.unet.requires_grad_(False)
         self.text_encoder.requires_grad_(False)
         self.text_encoder_2.requires_grad_(False)
+        self.vae.eval()
+        self.unet.eval()
+        self.text_encoder.eval()
+        self.text_encoder_2.eval()
         # self.controlnet.training=True
         # self.vae.training=False
         # self.unet.training=False
         # self.text_encoder.training=False
         # self.text_encoder_2.training=False
+        
         self.controlnet.train()
     def init_model(self):
         advanced = self.config.get("advanced", {})
@@ -113,7 +118,7 @@ class StableDiffusionModelCN(pl.LightningModule):
             caption, padding="max_length", truncation=True, max_length=tokenizer_max_length, return_tensors="pt"
         ).input_ids
         # print(caption)
-        print(input_ids.shape)
+
         #all_input_ids is tensor
 
         if tokenizer_max_length > tokenizer.model_max_length:
@@ -151,13 +156,8 @@ class StableDiffusionModelCN(pl.LightningModule):
                     # 先頭が <BOS> <PAD> ... の場合は <BOS> <EOS> <PAD> ... に変える
                     if ids_chunk[1] == tokenizer.pad_token_id:
                         ids_chunk[1] = tokenizer.eos_token_id
-
                     iids_list.append(ids_chunk)
-            print(ids_chunk)
 
-            for i in iids_list:
-                print(i.shape)
-            print(iids_list)
             input_ids = torch.stack(iids_list)  # 3,77
         return input_ids
     @torch.no_grad()
@@ -256,9 +256,9 @@ class StableDiffusionModelCN(pl.LightningModule):
         text_encoder_2 = self.text_encoder_2
 
         input_ids1 = self.get_input_ids(prompt, tokenizer).to(self.target_device)
-        print(input_ids1)
+
         input_ids2 = self.get_input_ids(prompt, tokenizer_2).to(self.target_device)
-        print(input_ids2)
+
         b_size = input_ids1.size()[0]
         input_ids1 = input_ids1.reshape((-1, self.tokenizer.model_max_length))  # batch_size*n, 77
         input_ids2 = input_ids2.reshape((-1, self.tokenizer_2.model_max_length))  # batch_size*n, 77

@@ -428,8 +428,11 @@ class ArrowIndexV2(object):
     def get_image_by_index(self, index, column='image', ret_type='pil', max_size=-1, shadow=None):
         table = self.load_table_by_index(index, shadow=shadow)
         index_bias = self._index_bias if shadow is None else self._shadow_index_bias[shadow]
-
-        col = 'image' if 'image' in table.column_names else 'binary'
+        #support all image columns
+        if column not in table.column_names:
+            col = 'binary'
+        else:
+            col = column
         temp = table[col][index - index_bias].as_py()
         image_bytes = io.BytesIO(temp)
         image_bytes.seek(0)
