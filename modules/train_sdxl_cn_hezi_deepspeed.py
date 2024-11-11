@@ -62,7 +62,7 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
     dataloader = DataLoader(dataset, batch_size=config.trainer.batch_size, shuffle=False, sampler=sampler,
                         num_workers=config.dataset.num_workers, pin_memory=True, drop_last=True)
     
-    params_to_optim = [{'params': model.controlnet.parameters()}]
+    params_to_optim = [{'params': model.model.parameters()}]
 
         
 
@@ -122,11 +122,12 @@ def get_sigmas(sch, timesteps, n_dim=4, dtype=torch.float32, device="cuda:0"):
 
 class SupervisedFineTune(StableDiffusionModelCN):
     def forward(self, batch):
-        
+
+
         advanced = self.config.get("advanced", {})
         with torch.no_grad():
             self.vae.to(self.target_device)
-            model_dtype = next(self.controlnet.parameters()).dtype
+            model_dtype = next(self.model.parameters()).dtype
             latents = self.vae.encode(batch['pixels']).latent_dist.sample().to(self.target_device).to(model_dtype)
 
             if torch.any(torch.isnan(latents)):
@@ -139,7 +140,8 @@ class SupervisedFineTune(StableDiffusionModelCN):
             encoder_hidden_states = self.encode_text(batch["prompts"])
             noise = torch.randn_like(latents).to(self.target_device).to(model_dtype)
             timesteps = torch.randint(0, self.noise_scheduler.config.num_train_timesteps, (latents.shape[0],)).long().to(self.device)
-
+            #(1 - (t /T)^3) * T
+            timesteps = (1 - (timesteps.float() / self.noise_scheduler.config.num_train_timesteps) ** 3) * self.noise_scheduler.config.num_train_timesteps
             add_time_ids = torch.cat(
                 [self.compute_time_ids(s, c, t) for s, c, t in zip(batch["original_size_as_tuple"], batch["crop_coords_top_left"], batch['target_size_as_tuple'])]
             ).to(self.device)
@@ -180,7 +182,7 @@ class SupervisedFineTune(StableDiffusionModelCN):
             # Predict the noise residual
             
             
-        down_block_res_samples, mid_block_res_sample = self.controlnet(
+        down_block_res_samples, mid_block_res_sample = self.model(
                     noisy_model_input,
                     timesteps,
                     encoder_hidden_states = encoder_hidden_states[0],

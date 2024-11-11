@@ -205,7 +205,7 @@ class TextImageArrowStream(Dataset):
         try:
             meta_info = self.index_manager.get_attribute(ind, 'meta_info')
 
-            if random.random() < 0.001:
+            if random.random() < 0.6:
                 return ""
             if random.random() < 0.001:
                 return 'Generate a random image'

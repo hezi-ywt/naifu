@@ -4,7 +4,7 @@ target: modules.train_sdxl_cn_hezi_deepspeed.setup
 trainer:
   sdxl_model_path: /mnt/d/sdwebui_model/Stable-diffusion/checkpoint-e2_s82000.safetensors
   cn_model_path: /mnt/d/sdwebui_model/cn/
-  batch_size: 2
+  batch_size: 1
   resolution: 1024
   world_size: 1
   seed: 114514
@@ -12,12 +12,12 @@ trainer:
   use_xformers: false
   enable_gradient_checkpointing: false
   enable_xformers_memory_efficient_attention: false
-  accumulate_grad_batches: 4
+  accumulate_grad_batches: 2
   gradient_clip_val: 0.0
   save_format: safetensors
   checkpoint_dir: "/mnt/d/sdwebui_model/cncheckpoint"
   checkpoint_freq: 1
-  checkpoint_steps: 2000
+  checkpoint_steps: 30
   save_weights_only: true
   max_epochs: 60
   max_steps: -1
@@ -39,8 +39,8 @@ lightning:
   devices: -1
   # strategy: deepspeed_stage_2
   # precision: 16
-  num_nodes: 1
-  strategy: common.deepspeed._sdxl_strategy
+  # num_nodes: 1
+  # strategy: common.deepspeed._sdxl_strategy
   precision: bf16-mixed
 
 dataset:
@@ -54,7 +54,7 @@ dataset:
   img_path: "/root/niji-anime-1"
   random_flip: false
   # process_batch_fn: "data.processors.shuffle_prompts_sdstyle"
-  max_token_length: 227 # [75, 150, 227]
+  max_token_length: 77 # [75, 150, 227]
 
 optimizer:
   name: torch.optim.AdamW

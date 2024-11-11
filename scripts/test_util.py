@@ -12,7 +12,7 @@ def batch_tensor_to_image(tensor_images, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
     # 保存每张图像
-    for i in range(tensor_images.size(0)):
+    for i in range(tensor_images.sha):
         # 选择第 i 张图像
         image_tensor = tensor_images[i]
 

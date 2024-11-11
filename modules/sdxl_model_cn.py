@@ -51,8 +51,7 @@ class StableDiffusionModelCN(pl.LightningModule):
         self.text_encoder_2 = sd.text_encoder_2.to(self.target_device)
         self.tokenizer = sd.tokenizer
         self.tokenizer_2 = sd.tokenizer_2
-        self.controlnet = ControlNetModel.from_pretrained(trainer_cfg.get("cn_model_path")).to(self.target_device)
-        self.model = self.controlnet.to(self.target_device)
+        self.model = ControlNetModel.from_pretrained(trainer_cfg.get("cn_model_path")).to(self.target_device)
         self.use_ema = trainer_cfg.get("use_ema", False)
         if self.use_ema:
             self.ema_control = EMAModel(self.controlnet.parameters(), model_cls=ControlNetModel, model_config=self.controlnet.config) 
@@ -71,13 +70,13 @@ class StableDiffusionModelCN(pl.LightningModule):
         self.unet.eval()
         self.text_encoder.eval()
         self.text_encoder_2.eval()
+        self.model.train()
         # self.controlnet.training=True
         # self.vae.training=False
         # self.unet.training=False
         # self.text_encoder.training=False
         # self.text_encoder_2.training=False
-        
-        self.controlnet.train()
+
     def init_model(self):
         advanced = self.config.get("advanced", {})
         self.build_models()
@@ -108,7 +107,7 @@ class StableDiffusionModelCN(pl.LightningModule):
             cache_snr_values(self.noise_scheduler, self.target_device)
 
     def get_module(self):
-        return self.controlnet
+        return self.model
 
     @torch.no_grad()
     def get_input_ids_(self, caption, tokenizer):
@@ -396,7 +395,16 @@ class StableDiffusionModelCN(pl.LightningModule):
                 logger.log_image(
                     key="samples", images=all_images, caption=all_prompts, step=global_step
                 )
-    
+    def on_before_backward(self, loss):
+        if self.use_ema:
+            if not self.ema_control.cur_decay_value:
+                self.ema_control.to(self.device)
+            self.ema_control.step(self.controlnet.parameters())
+
+    # def on_train_epoch_end(self):
+    #     if self.use_ema:
+    #         self.ema_control.save_pretrained(self.trainer.checkpoint_callback.dirpath)
+            
     @rank_zero_only
     def generate_samples_seq(self, logger, current_epoch, global_step):
         config = self.config.sampling
@@ -429,8 +437,8 @@ class StableDiffusionModelCN(pl.LightningModule):
             
             weight_to_save = {}    
             world_size = self._fsdp_engine.world_size
-            with _get_full_state_dict_context(self.controlnet._forward_module, world_size=world_size):
-                unet_weight = self.controlnet._forward_module.state_dict()
+            with _get_full_state_dict_context(self.model._forward_module, world_size=world_size):
+                unet_weight = self.model._forward_module.state_dict()
                 for key in unet_weight.keys():
                     weight_to_save[f"{key}"] = unet_weight[key]
                 
@@ -438,8 +446,8 @@ class StableDiffusionModelCN(pl.LightningModule):
         elif hasattr(self, "_deepspeed_engine"):
             from deepspeed import zero
             weight_to_save = {}
-            with zero.GatheredParameters(self.controlnet.parameters()):
-                unet_weight = self.controlnet.state_dict()
+            with zero.GatheredParameters(self.model.parameters()):
+                unet_weight = self.model.state_dict()
                 for key in unet_weight.keys():
                     weight_to_save[f"{key}"] = unet_weight[key]
                 
