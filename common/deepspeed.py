@@ -55,10 +55,11 @@ sdxl_ds_strategy = DeepSpeedStrategy(
         },
         "zero_optimization": {
             "stage": 2,
-            "reduce_scatter": False,
-            "overlap_comm": True,
+            # "reduce_scatter": False,
+            # "overlap_comm": True,
         },
-        "zero_allow_untested_optimizer": True,
+        # "zero_allow_untested_optimizer": True,
+        "gradient_clipping": 0.3,
     }
 )   
 

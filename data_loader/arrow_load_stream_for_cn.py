@@ -68,9 +68,16 @@ class TextImageArrowStream(Dataset):
         assert isinstance(resolution, int), f"resolution must be an integer, got {resolution}"
         self.flip_norm = T.Compose(
             [
-                T.RandomHorizontalFlip() if self.random_flip else T.Lambda(lambda x: x),
+                # T.RandomHorizontalFlip() if self.random_flip else T.Lambda(lambda x: x),
                 T.ToTensor(),
                 T.Normalize([0.5], [0.5]),
+            ]
+        )
+        self.flip_norm_cn = T.Compose(
+            [
+                # T.RandomHorizontalFlip() if self.random_flip else T.Lambda(lambda x: x),
+                T.ToTensor(),
+                # T.Normalize([0.5], [0.5]),
             ]
         )
         # tag_edit
@@ -169,7 +176,7 @@ class TextImageArrowStream(Dataset):
             images, crops_coords_top_left = self.index_manager.resize_and_crop(
                 [image,condition_image], target_size, resample=Image.LANCZOS, crop_type='random',is_list=True)
             image_tensor = self.flip_norm(images[0])
-            condition_image_tensor = self.flip_norm(images[1])
+            condition_image_tensor = self.flip_norm_cn(images[1])
         else:
             raise NotImplementedError("just support multireso, Not implemented yet.")
             target_size = (self.resolution, self.resolution)
@@ -205,7 +212,7 @@ class TextImageArrowStream(Dataset):
         try:
             meta_info = self.index_manager.get_attribute(ind, 'meta_info')
 
-            if random.random() < 0.6:
+            if random.random() < 0.5:
                 return ""
             if random.random() < 0.001:
                 return 'Generate a random image'
@@ -231,7 +238,7 @@ class TextImageArrowStream(Dataset):
                 return ""
             if random.random() < 0.001:
                 return 'Generate a random image'
-            
+            return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en')
         except Exception as e:
             return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en').replace("|||", "")
 

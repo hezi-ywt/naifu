@@ -2,9 +2,10 @@ name: test-run
 target: modules.train_sdxl_cn_hezi_deepspeed.setup
 
 trainer:
-  sdxl_model_path: /mnt/d/sdwebui_model/Stable-diffusion/checkpoint-e2_s82000.safetensors
-  cn_model_path: /mnt/d/sdwebui_model/cn/
-  batch_size: 1
+  sdxl_model_path: /data/stable-diffusion-webui/models/Stable-diffusion/OUE9checkpoint-e2_s82000.safetensors
+  # sdxl_model_path: /data/stable-diffusion-xl-base-1.0/sd_xl_base_1.0.safetensors
+  cn_model_path: /data/controlnet-openpose-sdxl-1.0/
+  batch_size: 4
   resolution: 1024
   world_size: 1
   seed: 114514
@@ -13,20 +14,22 @@ trainer:
   enable_gradient_checkpointing: false
   enable_xformers_memory_efficient_attention: false
   accumulate_grad_batches: 2
-  gradient_clip_val: 0.0
+  gradient_clip_val: 0
   save_format: safetensors
-  checkpoint_dir: "/mnt/d/sdwebui_model/cncheckpoint"
+  checkpoint_dir: "/data/stable-diffusion-webui/extensions/sd-webui-controlnet/models/co4"
   checkpoint_freq: 1
-  checkpoint_steps: 30
+  checkpoint_steps: 50
   save_weights_only: true
-  max_epochs: 60
+  max_epochs: 18
   max_steps: -1
   use_ema: false
 advanced:
   vae_encode_batch_size: -1 # same as batch_size
-  offset_noise: true
+  train_text_encoder_1: false
+  train_text_encoder_2: false
+  offset_noise: false
   offset_noise_val: 0.0375
-  min_snr: true
+  min_snr: false
   min_snr_val: 5
   timestep_start: 0
   timestep_end: 1000
@@ -38,34 +41,35 @@ lightning:
   accelerator: gpu
   devices: -1
   # strategy: deepspeed_stage_2
-  # precision: 16
-  # num_nodes: 1
-  # strategy: common.deepspeed._sdxl_strategy
+  # precision: bf16-mixed
+  num_nodes: 1
+  strategy: common.deepspeed._sdxl_strategy
   precision: bf16-mixed
 
+  
 dataset:
   name: data_loader.arrow_load_stream.TextImageArrowStream 
   target_area: 1_048_576 # 1024*1024
   index_file: "dataset/porcelain/jsons/porcelain_mt.json"
   multireso: true
-  num_workers: 2
+  num_workers: 8
   min_size: 512
   max_size: 2048
   img_path: "/root/niji-anime-1"
   random_flip: false
   # process_batch_fn: "data.processors.shuffle_prompts_sdstyle"
-  max_token_length: 77 # [75, 150, 227]
+  # max_token_length: none # [75, 152, 227]
 
 optimizer:
   name: torch.optim.AdamW
   params:
-    lr: 5e-5
+    lr: 1e-5
     weight_decay: 1e-2
 
 scheduler:
   name: transformers.get_constant_schedule_with_warmup
   params:
-    num_warmup_steps: 1000
+    num_warmup_steps: 500
     last_epoch: -1
 
 sampling:

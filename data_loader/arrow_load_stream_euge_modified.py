@@ -227,7 +227,7 @@ class TextImageArrowStream(Dataset):
                 return ""
             if random.random() < 0.001:
                 return 'Generate a random image'
-            
+            return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en')
         except Exception as e:
             return self.index_manager.get_attribute(ind, 'text_zh' if self.enable_CN else 'text_en')
 

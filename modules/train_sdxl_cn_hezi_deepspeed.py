@@ -123,17 +123,20 @@ def get_sigmas(sch, timesteps, n_dim=4, dtype=torch.float32, device="cuda:0"):
 class SupervisedFineTune(StableDiffusionModelCN):
     def forward(self, batch):
 
-
+        
         advanced = self.config.get("advanced", {})
         with torch.no_grad():
+            
+
             self.vae.to(self.target_device)
             model_dtype = next(self.model.parameters()).dtype
             latents = self.vae.encode(batch['pixels']).latent_dist.sample().to(self.target_device).to(model_dtype)
 
             if torch.any(torch.isnan(latents)):
                 logger.info("NaN found in latents, replacing with zeros")
-                latents = torch.where(torch.isnan(latents), torch.zeros_like(latents), latents)
-
+            latents = latents * self.vae.config.scaling_factor
+            # latents *= self.vae_scale_factor
+            
             # hidden_states1, hidden_states2, pool2 = get_hidden_states_sdxl(batch["prompts"], self.text_encoders, self.tokenizers, self.target_device, self.weight_dtype)
             # hidden_states = torch.cat([hidden_states1, hidden_states2], dim=2).to(self.target_device).to(model_dtype)
             # encoder_hidden_states = [hidden_states, pool2]
@@ -206,7 +209,8 @@ class SupervisedFineTune(StableDiffusionModelCN):
             noisy_model_input, timesteps,  encoder_hidden_states[0], added_cond_kwargs={"time_ids": add_time_ids, "text_embeds": encoder_hidden_states[1]}, \
             down_block_additional_residuals = down_block_res_samples,
             mid_block_additional_residual = mid_block_res_sample,
-        ).sample
+            return_dict=False,
+            )[0]
 
         # Get the target for loss depending on the prediction type
         is_v = advanced.get("v_parameterization", False)
