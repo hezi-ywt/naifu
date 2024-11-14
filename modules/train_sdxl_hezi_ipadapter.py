@@ -5,15 +5,14 @@ import lightning as pl
 from omegaconf import OmegaConf
 from common.utils import get_class, get_latest_checkpoint, load_torch_file
 from common.logging import logger
-from modules.sdxl_model_cn import StableDiffusionModelCN
+from modules.sdxl_model_ipadapter import IPAdapter_SDXL
 from modules.scheduler_utils import apply_snr_weight
 from lightning.pytorch.utilities.model_summary import ModelSummary
 from torch.utils.data import DataLoader
-from modules.sdxl_utils import get_hidden_states_sdxl 
-
+import itertools
 import random
 from IndexKits.index_kits.sampler import DistributedSamplerWithStartIndex, BlockDistributedSampler
-from data_loader.arrow_load_stream_for_cn import TextImageArrowStream
+from data_loader.arrow_load_stream_for_ipadapter import TextImageArrowStream
 import logging
 logger = logging.getLogger("hezi")
 
@@ -21,7 +20,6 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
     model = SupervisedFineTune(
         config=config, 
         device=fabric.device
-        
     )
     dataset_class = get_class(config.dataset.get("name", "data.AspectRatioDataset"))
 
@@ -61,11 +59,12 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
         
     dataloader = DataLoader(dataset, batch_size=config.trainer.batch_size, shuffle=False, sampler=sampler,
                         num_workers=config.dataset.num_workers, pin_memory=True, drop_last=True)
-    
-    params_to_optim = [{'params': model.model.parameters()}]
 
-        
+    # params_to_optim = [{'params': model.image_proj_model.parameters()},
+    #                    {'params':model.adapter_modules.parameters()}
+    #                    ]
 
+    params_to_optim = itertools.chain(model.model.image_proj_model.parameters(),  model.model.adapter_modules.parameters())
     optim_param = config.optimizer.params
     optimizer = get_class(config.optimizer.name)(
         params_to_optim, **optim_param
@@ -76,19 +75,6 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
             optimizer, **config.scheduler.params
         )
     
-    if config.trainer.get("resume"):
-        latest_ckpt = get_latest_checkpoint(config.trainer.checkpoint_dir)
-        remainder = {}
-        if latest_ckpt:
-            logger.info(f"Loading weights from {latest_ckpt}")
-            remainder = sd = load_torch_file(ckpt=latest_ckpt, extract=False)
-            if latest_ckpt.endswith(".safetensors"):
-                remainder = safetensors.safe_open(latest_ckpt, "pt").metadata()
-            model.load_state_dict(sd.get("state_dict", sd))
-            config.global_step = remainder.get("global_step", 0)
-            config.current_epoch = remainder.get("current_epoch", 0)
-        
-    model.vae.to(torch.float32)
     if fabric.is_global_zero and os.name != "nt":
         print(f"\n{ModelSummary(model, max_depth=1)}\n")
         
@@ -100,10 +86,7 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
         model, optimizer = fabric.setup(model, optimizer)
         model.get_module = lambda: model
         model._fsdp_engine = fabric.strategy
-    else:
-        model.model, optimizer = fabric.setup(model.model, optimizer)
 
-        
     dataloader = fabric.setup_dataloaders(dataloader)
     model._fabric_wrapped = fabric
     return model, dataset, dataloader, optimizer, scheduler
@@ -120,7 +103,7 @@ def get_sigmas(sch, timesteps, n_dim=4, dtype=torch.float32, device="cuda:0"):
         sigma = sigma.unsqueeze(-1)
     return sigma
 
-class SupervisedFineTune(StableDiffusionModelCN):
+class SupervisedFineTune(IPAdapter_SDXL):    
     def forward(self, batch):
 
         
@@ -135,15 +118,20 @@ class SupervisedFineTune(StableDiffusionModelCN):
             if torch.any(torch.isnan(latents)):
                 logger.info("NaN found in latents, replacing with zeros")
             latents = latents * self.vae.config.scaling_factor
-            # latents *= self.vae_scale_factor
-            
+            # print("Input shape:", batch["clip_images"].shape)
+
+            image_embeds = self.image_encoder(batch["clip_images"].squeeze(1).to(self.target_device).to(model_dtype)).image_embeds
             # hidden_states1, hidden_states2, pool2 = get_hidden_states_sdxl(batch["prompts"], self.text_encoders, self.tokenizers, self.target_device, self.weight_dtype)
             # hidden_states = torch.cat([hidden_states1, hidden_states2], dim=2).to(self.target_device).to(model_dtype)
             # encoder_hidden_states = [hidden_states, pool2]
-            if random.random() < 0.6:
-                encoder_hidden_states = self.encode_text(batch["prompts"])
-            else:
-                encoder_hidden_states = self.encode_text_(batch["prompts"])
+            image_embeds_ = []
+            for image_embed, drop_image_embed in zip(image_embeds, batch["drop_image_embeds"]):
+                if drop_image_embed == 1:
+                    image_embeds_.append(torch.zeros_like(image_embed))
+                else:
+                    image_embeds_.append(image_embed)
+            image_embeds = torch.stack(image_embeds_)
+            encoder_hidden_states = self.encode_text(batch["prompts"])
             noise = torch.randn_like(latents).to(self.target_device).to(model_dtype)
             add_time_ids = torch.cat(
                 [self.compute_time_ids(s, c, t) for s, c, t in zip(batch["original_size_as_tuple"], batch["crop_coords_top_left"], batch['target_size_as_tuple'])]
@@ -159,7 +147,10 @@ class SupervisedFineTune(StableDiffusionModelCN):
             timestep_start = advanced.get("timestep_start", 0)
             timestep_end = advanced.get("timestep_end", 1000)
             timestep_sampler_type = advanced.get("timestep_sampler_type", "uniform")
+            # add cond
 
+           
+            unet_added_cond_kwargs = {"text_embeds": encoder_hidden_states[1], "time_ids": add_time_ids}
 
             if timestep_sampler_type == "logit_normal":  
                 mu = advanced.get("timestep_sampler_mean", 0)
@@ -197,33 +188,9 @@ class SupervisedFineTune(StableDiffusionModelCN):
 
             # Predict the noise residual
             
-            
-        down_block_res_samples, mid_block_res_sample = self.model(
-                    noisy_model_input,
-                    timesteps,
-                    encoder_hidden_states = encoder_hidden_states[0],
-                    added_cond_kwargs={"time_ids": add_time_ids, "text_embeds": encoder_hidden_states[1]},
-                    controlnet_cond=batch['conditioning_pixels'],
-                    return_dict=False,
-                )
 
-        if (batch['conditioning_pixels'] == batch['pixels']).all():
-
-            print("conditioning_pixels == pixels")
-        # print(batch['conditioning_pixels'])
-        # print(batch['pixels'])
-        # # 保存每张图像
-        # from scrips.test_util import batch_tensor_to_image
-        # batch_tensor_to_image(batch['conditioning_pixels'], "output_dir1")
-        # batch_tensor_to_image(batch['pixels'], "output_di2")
-
+        noise_pred = self.model(noisy_model_input, timesteps, encoder_hidden_states[0], unet_added_cond_kwargs, image_embeds)
         
-        noise_pred = self.unet(
-            noisy_model_input, timesteps,  encoder_hidden_states[0], added_cond_kwargs={"time_ids": add_time_ids, "text_embeds": encoder_hidden_states[1]}, \
-            down_block_additional_residuals = down_block_res_samples,
-            mid_block_additional_residual = mid_block_res_sample,
-            return_dict=False,
-            )[0]
 
         # Get the target for loss depending on the prediction type
         is_v = advanced.get("v_parameterization", False)

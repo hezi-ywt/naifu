@@ -1,15 +1,18 @@
 from pathlib import Path
+import os
+
+from safetensors.torch import safe_open, save_file
+from PIL import Image
+from tqdm import tqdm
+
 import torch
+import torch.nn.functional as F
+import torch.distributed as dist
 import torch.utils.checkpoint
 import lightning as pl
-from PIL import Image
 
-import torch
-from tqdm import tqdm
-import torch.distributed as dist
 
-from models.sgm import GeneralConditioner
-from modules.sdxl_utils import disabled_train, UnetWrapper, AutoencoderKLWrapper
+import numpy as np
 from modules.scheduler_utils import apply_zero_terminal_snr, cache_snr_values
 from common.utils import get_class, load_torch_file, EmptyInitWrapper, get_world_size
 from common.logging import logger
@@ -28,10 +31,69 @@ from diffusers import (
     UNet2DConditionModel,
     
 )
+
+from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection, CLIPTextModelWithProjection
+
+from models.ip_adapter.ip_adapter import ImageProjModel
+from models.ip_adapter.utils import is_torch2_available
+if is_torch2_available():
+    from models.ip_adapter.attention_processor import IPAttnProcessor2_0 as IPAttnProcessor, AttnProcessor2_0 as AttnProcessor
+else:
+    from models.ip_adapter.attention_processor import IPAttnProcessor, AttnProcessor
 # define the LightningModule
 
 from modules.sdxl_utils import get_hidden_states_sdxl
-class StableDiffusionModelCN(pl.LightningModule):
+
+class IPAdapter(torch.nn.Module):
+    """IP-Adapter"""
+    def __init__(self, unet, image_proj_model, adapter_modules, ckpt_path=None):
+        super().__init__()
+        self.unet = unet
+        self.image_proj_model = image_proj_model
+        self.adapter_modules = adapter_modules
+
+        if ckpt_path is not None:
+            self.load_from_checkpoint(ckpt_path)
+
+    def forward(self, noisy_latents, timesteps, encoder_hidden_states, unet_added_cond_kwargs, image_embeds):
+        ip_tokens = self.image_proj_model(image_embeds)
+        encoder_hidden_states = torch.cat([encoder_hidden_states, ip_tokens], dim=1)
+        # Predict the noise residual
+        noise_pred = self.unet(noisy_latents, timesteps, encoder_hidden_states, added_cond_kwargs=unet_added_cond_kwargs).sample
+        return noise_pred
+
+    def load_from_checkpoint(self, ckpt_path: str):
+        # Calculate original checksums
+        orig_ip_proj_sum = torch.sum(torch.stack([torch.sum(p) for p in self.image_proj_model.parameters()]))
+        orig_adapter_sum = torch.sum(torch.stack([torch.sum(p) for p in self.adapter_modules.parameters()]))
+
+        if os.path.splitext(ckpt_path)[-1] == ".safetensors":
+            state_dict = {"image_proj": {}, "ip_adapter": {}}
+            with safe_open(ckpt_path, framework="pt", device="cpu") as f:
+                for key in f.keys():
+                    if key.startswith("image_proj."):
+                        state_dict["image_proj"][key.replace("image_proj.", "")] = f.get_tensor(key)
+                    elif key.startswith("ip_adapter."):
+                        state_dict["ip_adapter"][key.replace("ip_adapter.", "")] = f.get_tensor(key)
+        else:
+            state_dict = torch.load(ckpt_path, map_location="cpu")
+
+        # Load state dict for image_proj_model and adapter_modules
+        self.image_proj_model.load_state_dict(state_dict["image_proj"], strict=True)
+        self.adapter_modules.load_state_dict(state_dict["ip_adapter"], strict=True)
+
+        # Calculate new checksums
+        new_ip_proj_sum = torch.sum(torch.stack([torch.sum(p) for p in self.image_proj_model.parameters()]))
+        new_adapter_sum = torch.sum(torch.stack([torch.sum(p) for p in self.adapter_modules.parameters()]))
+
+        # Verify if the weights have changed
+        assert orig_ip_proj_sum != new_ip_proj_sum, "Weights of image_proj_model did not change!"
+        assert orig_adapter_sum != new_adapter_sum, "Weights of adapter_modules did not change!"
+
+        print(f"Successfully loaded weights from checkpoint {ckpt_path}")
+    
+
+class IPAdapter_SDXL(pl.LightningModule):
     def __init__(self, config, device) -> None:
         super().__init__()
         self.config = config
@@ -42,48 +104,80 @@ class StableDiffusionModelCN(pl.LightningModule):
     def build_models(self, init_unet=True, init_vae=True, init_conditioner=True):
         trainer_cfg = self.config.trainer
         config = self.config
+        
+        
+
+        # # Load scheduler, tokenizer and models.
+        # noise_scheduler = DDPMScheduler.from_pretrained(args.pretrained_model_name_or_path, subfolder="scheduler")
+        # tokenizer = CLIPTokenizer.from_pretrained(args.pretrained_model_name_or_path, subfolder="tokenizer")
+        # text_encoder = CLIPTextModel.from_pretrained(args.pretrained_model_name_or_path, subfolder="text_encoder")
+        # tokenizer_2 = CLIPTokenizer.from_pretrained(args.pretrained_model_name_or_path, subfolder="tokenizer_2")
+        # text_encoder_2 = CLIPTextModelWithProjection.from_pretrained(args.pretrained_model_name_or_path, subfolder="text_encoder_2")
+        # vae = AutoencoderKL.from_pretrained(args.pretrained_model_name_or_path, subfolder="vae")
+        # unet = UNet2DConditionModel.from_pretrained(args.pretrained_model_name_or_path, subfolder="unet")
+        self.image_encoder = CLIPVisionModelWithProjection.from_pretrained(trainer_cfg.get("image_encoder_path")).to(self.target_device)
+        # freeze parameters of models to save more memory
+
         advanced = trainer_cfg.get("advanced", {})
         sd = StableDiffusionXLPipeline.from_single_file(trainer_cfg.get("sdxl_model_path"))
         self.vae = sd.vae.to(self.target_device)
-        self.vae_scale_factor  = 0.18215
-        self.unet = sd.unet.to(self.target_device)
+        self.vae_scale_factor  = self.vae.config.scaling_factor
+
+        unet = sd.unet.to(self.target_device)
+        
         self.max_token_length = config.dataset.get("max_token_length", 77)
         self.text_encoder = sd.text_encoder.to(self.target_device)
         self.text_encoder_2 = sd.text_encoder_2.to(self.target_device)
         self.tokenizer = sd.tokenizer
-        
         self.tokenizer_2 = sd.tokenizer_2
-        if trainer_cfg.get("cn_model_path") is not None:
-            self.model = ControlNetModel.from_pretrained(trainer_cfg.get("cn_model_path")).to(self.target_device)
-        else:
-            self.model = ControlNetModel.from_unet(self.unet).to(self.target_device)      
-            print("init")
-        self.use_ema = trainer_cfg.get("use_ema", False)
-        if self.use_ema:
-            self.ema_control = EMAModel(self.controlnet.parameters(), model_cls=ControlNetModel, model_config=self.controlnet.config) 
+        #ip-adapter
+        num_tokens = 4
+        image_proj_model = ImageProjModel(
+            cross_attention_dim=unet.config.cross_attention_dim,
+            clip_embeddings_dim=self.image_encoder.config.projection_dim,
+            clip_extra_context_tokens=num_tokens,
+    )
+        
+        
 
-        if trainer_cfg.get("use_xformers",False):
-            self.unet.enable_xformers_memory_efficient_attention()
-        if trainer_cfg.get("enable_gradient_checkpointing",False):
-            self.controlnet.enable_gradient_checkpointing()
-        if trainer_cfg.get("enable_xformers_memory_efficient_attention",False):
-            self.controlnet.enable_xformers_memory_efficient_attention()    
+        attn_procs = {}
+        unet_sd = unet.state_dict()
+        for name in unet.attn_processors.keys():
+            cross_attention_dim = None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
+            if name.startswith("mid_block"):
+                hidden_size = unet.config.block_out_channels[-1]
+            elif name.startswith("up_blocks"):
+                block_id = int(name[len("up_blocks.")])
+                hidden_size = list(reversed(unet.config.block_out_channels))[block_id]
+            elif name.startswith("down_blocks"):
+                block_id = int(name[len("down_blocks.")])
+                hidden_size = unet.config.block_out_channels[block_id]
+            if cross_attention_dim is None:
+                attn_procs[name] = AttnProcessor()
+            else:
+                layer_name = name.split(".processor")[0]
+                weights = {
+                    "to_k_ip.weight": unet_sd[layer_name + ".to_k.weight"],
+                    "to_v_ip.weight": unet_sd[layer_name + ".to_v.weight"],
+                }
+                attn_procs[name] = IPAttnProcessor(hidden_size=hidden_size, cross_attention_dim=cross_attention_dim, num_tokens=num_tokens)
+                attn_procs[name].load_state_dict(weights)
+        unet.set_attn_processor(attn_procs)
+        adapter_modules = torch.nn.ModuleList(unet.attn_processors.values())
+        
+        self.model = IPAdapter(unet, image_proj_model, adapter_modules, trainer_cfg.pretrained_ip_adapter_path)
+        self.image_encoder.requires_grad_(False)
         self.vae.requires_grad_(False)
-        self.unet.requires_grad_(False)
+        self.model.unet.requires_grad_(False)
         self.text_encoder.requires_grad_(False)
         self.text_encoder_2.requires_grad_(False)
-        self.model.requires_grad_(True)
-        # self.vae.eval()
-        # self.unet.eval()
-        # self.text_encoder.eval()
-        # self.text_encoder_2.eval()
-        self.model.train()
-        # self.module_to_monitor = self.unet.weight.data.clone()
-        # self.controlnet.training=True
-        # self.vae.training=False
-        # self.unet.training=False
-        # self.text_encoder.training=False
-        # self.text_encoder_2.training=False
+        
+        
+        
+        # self.model.requires_grad_(True)
+
+        # self.model.train()
+
 
     def init_model(self):
         advanced = self.config.get("advanced", {})
@@ -494,8 +588,33 @@ class StableDiffusionModelCN(pl.LightningModule):
             logger.log_image(
                 key="samples", images=images, caption=prompts, step=global_step
             )
+    
+    
+    def load_from_checkpoint(self, ckpt_path: str):
+        # Calculate original checksums
+        orig_ip_proj_sum = torch.sum(torch.stack([torch.sum(p) for p in self.image_proj_model.parameters()]))
+        orig_adapter_sum = torch.sum(torch.stack([torch.sum(p) for p in self.adapter_modules.parameters()]))
 
+        state_dict = torch.load(ckpt_path, map_location="cpu")
+
+        # Load state dict for image_proj_model and adapter_modules
+        self.image_proj_model.load_state_dict(state_dict["image_proj"], strict=True)
+        self.adapter_modules.load_state_dict(state_dict["ip_adapter"], strict=True)
+
+        # Calculate new checksums
+        new_ip_proj_sum = torch.sum(torch.stack([torch.sum(p) for p in self.image_proj_model.parameters()]))
+        new_adapter_sum = torch.sum(torch.stack([torch.sum(p) for p in self.adapter_modules.parameters()]))
+
+        # Verify if the weights have changed
+        assert orig_ip_proj_sum != new_ip_proj_sum, "Weights of image_proj_model did not change!"
+        assert orig_adapter_sum != new_adapter_sum, "Weights of adapter_modules did not change!"
+
+        print(f"Successfully loaded weights from checkpoint {ckpt_path}")
+        
     def save_checkpoint(self, model_path, metadata):
+        
+        
+        
         weight_to_save = None
         if hasattr(self, "_fsdp_engine"):
             from lightning.fabric.strategies.fsdp import _get_full_state_dict_context
@@ -520,9 +639,65 @@ class StableDiffusionModelCN(pl.LightningModule):
                 
         else:
             weight_to_save = self.state_dict()
-                
-        self._save_checkpoint(model_path, weight_to_save, metadata)
+            
+        save_weight = {}
+        
+        for key in weight_to_save.keys():
+            if not key.startswith("unet"):
+                #remove the unet prefix
+                save_weight[f"{key}"] = weight_to_save[key]
 
+        
+        self._save_checkpoint(model_path, save_weight, metadata)
+
+
+
+    # def save_checkpoint(self, model_path, metadata):
+    #     weight_to_save = None
+    #     if hasattr(self, "_fsdp_engine"):
+    #         from lightning.fabric.strategies.fsdp import _get_full_state_dict_context
+            
+    #         weight_to_save = {}    
+    #         world_size = self._fsdp_engine.world_size
+    #         with _get_full_state_dict_context(self.model._forward_module, world_size=world_size):
+    #             unet_weight = self.model._forward_module.state_dict()
+    #             for key, value in unet_weight.items():
+    #                 weight_to_save[key] = value
+
+    #     elif hasattr(self, "_deepspeed_engine"):
+    #         from deepspeed import zero
+    #         with zero.GatheredParameters(self.model.parameters(), modifier_rank=None):
+    #             weight_to_save = self.model.state_dict()
+
+    #     else:
+    #         weight_to_save = self.state_dict()
+
+    #     # 使用 `safetensors` 的 `save_model` 方法
+    #     from safetensors.torch import save_model
+    #     if weight_to_save:
+    #         save_model(weight_to_save, model_path, metadata=metadata)
+
+    def load_from_checkpoint(self, ckpt_path: str):
+        # Calculate original checksums
+        orig_ip_proj_sum = torch.sum(torch.stack([torch.sum(p) for p in self.image_proj_model.parameters()]))
+        orig_adapter_sum = torch.sum(torch.stack([torch.sum(p) for p in self.adapter_modules.parameters()]))
+
+        state_dict = torch.load(ckpt_path, map_location="cpu")
+
+        # Load state dict for image_proj_model and adapter_modules
+        self.image_proj_model.load_state_dict(state_dict["image_proj"], strict=True)
+        self.adapter_modules.load_state_dict(state_dict["ip_adapter"], strict=True)
+
+        # Calculate new checksums
+        new_ip_proj_sum = torch.sum(torch.stack([torch.sum(p) for p in self.image_proj_model.parameters()]))
+        new_adapter_sum = torch.sum(torch.stack([torch.sum(p) for p in self.adapter_modules.parameters()]))
+
+        # Verify if the weights have changed
+        assert orig_ip_proj_sum != new_ip_proj_sum, "Weights of image_proj_model did not change!"
+        assert orig_adapter_sum != new_adapter_sum, "Weights of adapter_modules did not change!"
+
+        print(f"Successfully loaded weights from checkpoint {ckpt_path}")
+    
     @rank_zero_only
     def _save_checkpoint(self, model_path, state_dict, metadata):
         cfg = self.config.trainer

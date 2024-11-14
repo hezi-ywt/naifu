@@ -1,24 +1,25 @@
 name: test-run
-target: modules.train_sdxl_cn_hezi_deepspeed.setup
+target: modules.train_sdxl_hezi_ipadapter.setup
 
 trainer:
   sdxl_model_path: /data/stable-diffusion-webui/models/Stable-diffusion/OUE9checkpoint-e2_s82000.safetensors
   # sdxl_model_path: /data/stable-diffusion-xl-base-1.0/sd_xl_base_1.0.safetensors
-  cn_model_path: /data/co/3/
+  pretrained_ip_adapter_path: /data/ipmodel/IP-Adapter/sdxl_models/ip-adapter_sdxl.safetensors
+  image_encoder_path: /data/ipmodel/IP-Adapter/sdxl_models/image_encoder
   batch_size: 4
   resolution: 1024
   world_size: 1
   seed: 114514
-  wandb_id: "openpose"
+  wandb_id: "ipadapter"
   use_xformers: false
   enable_gradient_checkpointing: false
   enable_xformers_memory_efficient_attention: false
   accumulate_grad_batches: 2
   gradient_clip_val: 0
   save_format: safetensors
-  checkpoint_dir: "/data/stable-diffusion-webui/extensions/sd-webui-controlnet/models/co4/"
+  checkpoint_dir: "/data/ipout/"
   checkpoint_freq: 1
-  checkpoint_steps: 1000
+  checkpoint_steps: 500
   save_weights_only: true
   max_epochs: 18
   max_steps: -1
