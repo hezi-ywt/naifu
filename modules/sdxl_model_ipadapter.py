@@ -646,6 +646,10 @@ class IPAdapter_SDXL(pl.LightningModule):
             if not key.startswith("unet"):
                 #remove the unet prefix
                 save_weight[f"{key}"] = weight_to_save[key]
+            if key.startswith("adapter_modules"):
+                save_weight[f"{key.replace("adapter_modules", "ip_adapter")}"] = weight_to_save[key].clone()
+            if key.startswith("image_proj_model"):
+                save_weight[f"{key.replace("image_proj_model", "image_proj")}"] = weight_to_save[key].clone()
 
         
         self._save_checkpoint(model_path, save_weight, metadata)

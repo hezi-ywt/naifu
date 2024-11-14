@@ -17,9 +17,9 @@ trainer:
   accumulate_grad_batches: 2
   gradient_clip_val: 0
   save_format: safetensors
-  checkpoint_dir: "/data/ipout/"
+  checkpoint_dir: "/data/stable-diffusion-webui/extensions/sd-webui-controlnet/models/ip"
   checkpoint_freq: 1
-  checkpoint_steps: 500
+  checkpoint_steps: 20
   save_weights_only: true
   max_epochs: 18
   max_steps: -1
