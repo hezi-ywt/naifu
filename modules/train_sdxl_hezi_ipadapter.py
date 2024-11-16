@@ -131,7 +131,10 @@ class SupervisedFineTune(IPAdapter_SDXL):
                 else:
                     image_embeds_.append(image_embed)
             image_embeds = torch.stack(image_embeds_)
-            encoder_hidden_states = self.encode_text(batch["prompts"])
+            if random.random() < 0.75:
+                encoder_hidden_states = self.encode_text(batch["prompts"])
+            else:
+                encoder_hidden_states = self.encode_text_(batch["prompts"])
             noise = torch.randn_like(latents).to(self.target_device).to(model_dtype)
             add_time_ids = torch.cat(
                 [self.compute_time_ids(s, c, t) for s, c, t in zip(batch["original_size_as_tuple"], batch["crop_coords_top_left"], batch['target_size_as_tuple'])]

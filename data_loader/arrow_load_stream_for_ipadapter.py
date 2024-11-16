@@ -38,7 +38,7 @@ class TextImageArrowStream(Dataset):
                  dtype=torch.float32,
                  tokenizer=None, 
                  tokenizer_2=None, 
-                 size=1024, center_crop=True, t_drop_rate=0.05, i_drop_rate=0.05, ti_drop_rate=0.05,
+                 size=1024, center_crop=True, t_drop_rate=0.3, i_drop_rate=0.05, ti_drop_rate=0.03,
                  **kwarges,
                  ):
         

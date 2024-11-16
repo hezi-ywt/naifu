@@ -4,9 +4,9 @@ target: modules.train_sdxl_hezi_ipadapter.setup
 trainer:
   sdxl_model_path: /data/stable-diffusion-webui/models/Stable-diffusion/OUE9checkpoint-e2_s82000.safetensors
   # sdxl_model_path: /data/stable-diffusion-xl-base-1.0/sd_xl_base_1.0.safetensors
-  pretrained_ip_adapter_path: /data/ipmodel/IP-Adapter/sdxl_models/ip-adapter_sdxl.safetensors
+  pretrained_ip_adapter_path: /data/stable-diffusion-webui/extensions/sd-webui-controlnet/models/ip/checkpoint-e8_s69500.safetensors
   image_encoder_path: /data/ipmodel/IP-Adapter/sdxl_models/image_encoder
-  batch_size: 4
+  batch_size: 8
   resolution: 1024
   world_size: 1
   seed: 114514
@@ -19,7 +19,7 @@ trainer:
   save_format: safetensors
   checkpoint_dir: "/data/stable-diffusion-webui/extensions/sd-webui-controlnet/models/ip"
   checkpoint_freq: 1
-  checkpoint_steps: 20
+  checkpoint_steps: 500
   save_weights_only: true
   max_epochs: 18
   max_steps: -1
@@ -64,7 +64,7 @@ dataset:
 optimizer:
   name: torch.optim.AdamW
   params:
-    lr: 1e-5
+    lr: 1e-4
     weight_decay: 1e-2
 
 scheduler:

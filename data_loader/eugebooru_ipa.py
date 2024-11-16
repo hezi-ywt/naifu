@@ -117,6 +117,10 @@ TAGTYPE_TO_FORMAT = {
     'aesthetic': '{}',
 }
 
+
+
+
+
 FEATURE_TABLE = None
 SEX_TABLE = None
 TAG_FREQUENCY_HOOK = None  # to be initialized later
@@ -652,10 +656,10 @@ def get_ata_tags(
     # 标签洗牌
     tags = shuffle_tags(
         tags,
-        fixed_tag_dropout_prob=0.003,
-        flex_tag_dropout_prob=0.05,
-        tags_shuffle_prob=0.2,
-        tags_shuffle_rate=0.2,
+        fixed_tag_dropout_prob=0.3,
+        flex_tag_dropout_prob=0.5,
+        tags_shuffle_prob=0.5,
+        tags_shuffle_rate=0.5,
     )
 
     # 精炼时提高丢弃 tags 的概率
