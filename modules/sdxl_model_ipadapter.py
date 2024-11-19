@@ -166,12 +166,20 @@ class IPAdapter_SDXL(pl.LightningModule):
         adapter_modules = torch.nn.ModuleList(unet.attn_processors.values())
         
         self.model = IPAdapter(unet, image_proj_model, adapter_modules, trainer_cfg.pretrained_ip_adapter_path)
-        self.image_encoder.requires_grad_(False)
+        
         self.vae.requires_grad_(False)
         self.model.unet.requires_grad_(False)
+        self.model.image_proj_model.requires_grad_(True)
+        self.model.adapter_modules.requires_grad_(True)
         self.text_encoder.requires_grad_(False)
         self.text_encoder_2.requires_grad_(False)
-        
+        self.vae.eval()
+        if config.get("train_image_encoder", False):
+            self.image_encoder.requires_grad_(True)
+ 
+        else:
+            self.image_encoder.requires_grad_(False)
+ 
         
         
         # self.model.requires_grad_(True)
@@ -654,6 +662,45 @@ class IPAdapter_SDXL(pl.LightningModule):
         
         self._save_checkpoint(model_path, save_weight, metadata)
 
+        if self.config.get("train_image_encoder", False):
+            weight_to_save = None
+            if hasattr(self, "_fsdp_engine"):
+                from lightning.fabric.strategies.fsdp import _get_full_state_dict_context
+                
+                weight_to_save = {}    
+                world_size = self._fsdp_engine.world_size
+                with _get_full_state_dict_context(self.image_encoder._forward_module, world_size=world_size):
+                    image_encoder_weight = self.image_encoder._forward_module.state_dict()
+                    for key in image_encoder_weight.keys():
+                        weight_to_save[f"{key}"] = unet_weight[key]
+                    
+            
+            elif hasattr(self, "_deepspeed_engine"):
+                from deepspeed import zero
+                weight_to_save = {}
+                with zero.GatheredParameters(self.image_encoder.parameters()):
+                    image_encoder_weight = self.image_encoder.state_dict()
+                    for key in unet_weight.keys():
+                        weight_to_save[f"{key}"] = unet_weight[key]
+                    
+            else:
+                weight_to_save = self.state_dict()
+                
+            save_weight = {}
+            
+            for key in weight_to_save.keys():
+                if not key.startswith("unet"):
+                    #remove the unet prefix
+                    save_weight[f"{key}"] = weight_to_save[key]
+                if key.startswith("adapter_modules"):
+                    save_weight[f"{key.replace("adapter_modules", "ip_adapter")}"] = weight_to_save[key].clone()
+                if key.startswith("image_proj_model"):
+                    save_weight[f"{key.replace("image_proj_model", "image_proj")}"] = weight_to_save[key].clone()
+
+            
+            self._save_checkpoint(model_path, save_weight, metadata)
+                
+            
 
 
     # def save_checkpoint(self, model_path, metadata):

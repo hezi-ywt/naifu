@@ -4,7 +4,7 @@ target: modules.train_sdxl_hezi_ipadapter.setup
 trainer:
   sdxl_model_path: /data/stable-diffusion-webui/models/Stable-diffusion/OUE9checkpoint-e2_s82000.safetensors
   # sdxl_model_path: /data/stable-diffusion-xl-base-1.0/sd_xl_base_1.0.safetensors
-  pretrained_ip_adapter_path: /data/stable-diffusion-webui/extensions/sd-webui-controlnet/models/ip/checkpoint-e8_s69500.safetensors
+  pretrained_ip_adapter_path: /data/stable-diffusion-webui/extensions/sd-webui-controlnet/models/ip/checkpoint-e5_s20105.safetensors
   image_encoder_path: /data/ipmodel/IP-Adapter/sdxl_models/image_encoder
   batch_size: 8
   resolution: 1024
@@ -26,8 +26,8 @@ trainer:
   use_ema: false
 advanced:
   vae_encode_batch_size: -1 # same as batch_size
-  train_text_encoder_1: false
-  train_text_encoder_2: false
+  train_image_encoder: false
+  image_encoder_lr: 3e-6
   offset_noise: false
   offset_noise_val: 0.0375
   min_snr: false

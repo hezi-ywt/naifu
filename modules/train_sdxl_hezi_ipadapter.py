@@ -65,6 +65,13 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
     #                    ]
 
     params_to_optim = itertools.chain(model.model.image_proj_model.parameters(),  model.model.adapter_modules.parameters())
+
+    if config.advanced.get("train_image_encoder"):
+        lr = config.advanced.get("image_encoder_lr", config.optimizer.params.lr)
+        params_to_optim.append(
+            {"params": model.image_encoder.parameters(), "lr": lr}
+        )
+        
     optim_param = config.optimizer.params
     optimizer = get_class(config.optimizer.name)(
         params_to_optim, **optim_param
@@ -86,7 +93,11 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
         model, optimizer = fabric.setup(model, optimizer)
         model.get_module = lambda: model
         model._fsdp_engine = fabric.strategy
-
+    else:
+        model.model, optimizer = fabric.setup(model.model, optimizer)
+        if config.advanced.get("train_image_encoder"):
+            model.conditioner = fabric.setup(model.image_encoder)
+            
     dataloader = fabric.setup_dataloaders(dataloader)
     model._fabric_wrapped = fabric
     return model, dataset, dataloader, optimizer, scheduler
@@ -108,88 +119,88 @@ class SupervisedFineTune(IPAdapter_SDXL):
 
         
         advanced = self.config.get("advanced", {})
-        with torch.no_grad():
+
             
 
-            self.vae.to(self.target_device)
-            model_dtype = next(self.model.parameters()).dtype
-            latents = self.vae.encode(batch['pixels']).latent_dist.sample().to(self.target_device).to(model_dtype)
+        self.vae.to(self.target_device)
+        model_dtype = next(self.model.parameters()).dtype
+        latents = self.vae.encode(batch['pixels']).latent_dist.sample().to(self.target_device).to(model_dtype)
 
-            if torch.any(torch.isnan(latents)):
-                logger.info("NaN found in latents, replacing with zeros")
-            latents = latents * self.vae.config.scaling_factor
+        if torch.any(torch.isnan(latents)):
+            logger.info("NaN found in latents, replacing with zeros")
+        latents = latents * self.vae.config.scaling_factor
             # print("Input shape:", batch["clip_images"].shape)
 
-            image_embeds = self.image_encoder(batch["clip_images"].squeeze(1).to(self.target_device).to(model_dtype)).image_embeds
-            # hidden_states1, hidden_states2, pool2 = get_hidden_states_sdxl(batch["prompts"], self.text_encoders, self.tokenizers, self.target_device, self.weight_dtype)
-            # hidden_states = torch.cat([hidden_states1, hidden_states2], dim=2).to(self.target_device).to(model_dtype)
-            # encoder_hidden_states = [hidden_states, pool2]
-            image_embeds_ = []
-            for image_embed, drop_image_embed in zip(image_embeds, batch["drop_image_embeds"]):
-                if drop_image_embed == 1:
-                    image_embeds_.append(torch.zeros_like(image_embed))
-                else:
-                    image_embeds_.append(image_embed)
-            image_embeds = torch.stack(image_embeds_)
-            if random.random() < 0.75:
-                encoder_hidden_states = self.encode_text(batch["prompts"])
+        image_embeds = self.image_encoder(batch["clip_images"].squeeze(1).to(self.target_device).to(model_dtype)).image_embeds
+        # hidden_states1, hidden_states2, pool2 = get_hidden_states_sdxl(batch["prompts"], self.text_encoders, self.tokenizers, self.target_device, self.weight_dtype)
+        # hidden_states = torch.cat([hidden_states1, hidden_states2], dim=2).to(self.target_device).to(model_dtype)
+        # encoder_hidden_states = [hidden_states, pool2]
+        image_embeds_ = []
+        for image_embed, drop_image_embed in zip(image_embeds, batch["drop_image_embeds"]):
+            if drop_image_embed == 1:
+                image_embeds_.append(torch.zeros_like(image_embed))
             else:
-                encoder_hidden_states = self.encode_text_(batch["prompts"])
-            noise = torch.randn_like(latents).to(self.target_device).to(model_dtype)
-            add_time_ids = torch.cat(
-                [self.compute_time_ids(s, c, t) for s, c, t in zip(batch["original_size_as_tuple"], batch["crop_coords_top_left"], batch['target_size_as_tuple'])]
-            ).to(self.device)
+                image_embeds_.append(image_embed)
+        image_embeds = torch.stack(image_embeds_)
+        if random.random() < 0.75:
+            encoder_hidden_states = self.encode_text(batch["prompts"])
+        else:
+            encoder_hidden_states = self.encode_text_(batch["prompts"])
+        noise = torch.randn_like(latents).to(self.target_device).to(model_dtype)
+        add_time_ids = torch.cat(
+            [self.compute_time_ids(s, c, t) for s, c, t in zip(batch["original_size_as_tuple"], batch["crop_coords_top_left"], batch['target_size_as_tuple'])]
+        ).to(self.device)
 
-            if advanced.get("offset_noise") and random.random() < 0.5:
-                offset = torch.randn(latents.shape[0], latents.shape[1], 1, 1, device=latents.device)
-                noise = torch.randn_like(latents) + float(advanced.get("offset_noise_val")) * offset * random.random()
+        if advanced.get("offset_noise") and random.random() < 0.5:
+            offset = torch.randn(latents.shape[0], latents.shape[1], 1, 1, device=latents.device)
+            noise = torch.randn_like(latents) + float(advanced.get("offset_noise_val")) * offset * random.random()
 
-            bsz = latents.shape[0]
+        bsz = latents.shape[0]
 
-            # Sample a random timestep for each image
-            timestep_start = advanced.get("timestep_start", 0)
-            timestep_end = advanced.get("timestep_end", 1000)
-            timestep_sampler_type = advanced.get("timestep_sampler_type", "uniform")
-            # add cond
+        # Sample a random timestep for each image
+        timestep_start = advanced.get("timestep_start", 0)
+        timestep_end = advanced.get("timestep_end", 1000)
+        timestep_sampler_type = advanced.get("timestep_sampler_type", "uniform")
+        # add cond
 
-           
-            unet_added_cond_kwargs = {"text_embeds": encoder_hidden_states[1], "time_ids": add_time_ids}
+        
+        unet_added_cond_kwargs = {"text_embeds": encoder_hidden_states[1], "time_ids": add_time_ids}
 
-            if timestep_sampler_type == "logit_normal":  
-                mu = advanced.get("timestep_sampler_mean", 0)
-                sigma = advanced.get("timestep_sampler_std", 1)
-                t = torch.sigmoid(mu + sigma * torch.randn(size=(bsz,), device=latents.device))
-                timesteps = t * (timestep_end - timestep_start) + timestep_start  # scale to [min_timestep, max_timestep)
-                timesteps = timesteps.long()
-            else:
-                # default impl
-                timesteps = torch.randint(
-                    low=timestep_start, 
-                    high=timestep_end,
-                    size=(bsz,),
-                    dtype=torch.int64,
-                    device=latents.device,
-                )
+        if timestep_sampler_type == "logit_normal":  
+            mu = advanced.get("timestep_sampler_mean", 0)
+            sigma = advanced.get("timestep_sampler_std", 1)
+            t = torch.sigmoid(mu + sigma * torch.randn(size=(bsz,), device=latents.device))
+            timesteps = t * (timestep_end - timestep_start) + timestep_start  # scale to [min_timestep, max_timestep)
+            timesteps = timesteps.long()
+        else:
+            # default impl
+            timesteps = torch.randint(
+                low=timestep_start, 
+                high=timestep_end,
+                size=(bsz,),
+                dtype=torch.int64,
+                device=latents.device,
+            )
 
-                timesteps = timesteps.long()
-            # timesteps = self.get_cubic_timesteps(bsz,latents,timestep_end)
-            # t = torch.rand((bsz, ), device=latents.device)
+            timesteps = timesteps.long()
+        # timesteps = self.get_cubic_timesteps(bsz,latents,timestep_end)
+        # t = torch.rand((bsz, ), device=latents.device)
 
-            # timesteps = (1 - t**3) * timestep_end
-            # print(timesteps)
-            # timesteps = timesteps.long().to(latents.device)
-            # print(timesteps)
-                            # Cubic sampling to sample a random timestep for each image
+        # timesteps = (1 - t**3) * timestep_end
+        # print(timesteps)
+        # timesteps = timesteps.long().to(latents.device)
+        # print(timesteps)
+                        # Cubic sampling to sample a random timestep for each image
 
-            # timesteps = torch.randint(0, self.noise_scheduler.config.num_train_timesteps, (latents.shape[0],)).long().to(self.device)
-            #(1 - (t /T)^3) * T
+        # timesteps = torch.randint(0, self.noise_scheduler.config.num_train_timesteps, (latents.shape[0],)).long().to(self.device)
+        #(1 - (t /T)^3) * T
 
 
-            # Add noise to the latents according to the noise magnitude at each timestep
-            # (this is the forward diffusion process)
-            noisy_model_input = self.noise_scheduler.add_noise(latents, noise, timesteps).to(model_dtype)
+        # Add noise to the latents according to the noise magnitude at each timestep
+        # (this is the forward diffusion process)
+        noisy_model_input = self.noise_scheduler.add_noise(latents, noise, timesteps).to(model_dtype)
 
-            # Predict the noise residual
+        # Predict the noise residual
             
 
         noise_pred = self.model(noisy_model_input, timesteps, encoder_hidden_states[0], unet_added_cond_kwargs, image_embeds)
