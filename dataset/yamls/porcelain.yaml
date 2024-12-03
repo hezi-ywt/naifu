@@ -1,0 +1,37 @@
+source:
+- /mnt/data/arrowdata/danbooru_newest-webp-4Mpixel-all/*.arrow:
+    repeat: 1
+    
+- /mnt/data/arrowdata/danbooru2024-webp-4Mpixel/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/char3/*.arrow:
+    repeat: 30
+
+- /mnt/data/arrowdata/char/*.arrow:
+    repeat: 20
+
+- /mnt/data/arrowdata/char2/*.arrow:
+    repeat: 20
+
+- /mnt/data/arrowdata/danbooru_style/*.arrow:
+    repeat: 10
+
+- /mnt/data/arrowdata/out_style/*.arrow:
+    repeat: 20
+
+- /mnt/data/arrowdata/photo_data/*.arrow:
+    repeat: 10
+- /mnt/data/arrowdata/char_old/*.arrow:
+    repeat: 20
+
+
+
+
+filter:
+    md5:
+     -  name: danbooru_unusual_aspect_ratio_md5
+        path: /mnt/data/naifu/dataset/md5/danbooru_unusual_aspect_ratio_md5.txt
+        type: list
+        action: in
+        is_valid: false

@@ -1,0 +1,515 @@
+source:
+- /data/sdxl/artist_arrow_dir/kedama_milk/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/amyu_(amm_asl_pa)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/hoji_(hooooooooji1029)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/kaki_z3/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/mitsu_(mitsu_art)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/bubble99/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/shuiruoqing/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/weri/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/amashiro_natsuki/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/nekojira/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/wlop/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/kaguyuzu/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/lard_(kumazakiyuta)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/tsunako/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/nikorashi-ka/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/shiben_(ugvu5784)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/aos/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/yd_(orange_maru)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/demizu_posuka/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/nardack/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/satou_kuuki/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/abpart/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/snow_is/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/jeze/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/hwansang_jungdog/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/modare/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/ogipote/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/michiking/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/papino/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/prab/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/binggong_asylum/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/poco_(asahi_age)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/m-da_s-tarou/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/meion/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/poharo/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/rea_loixacra/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/ohisashiburi/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/shiratama_(shiratamaco)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/momoko_(momopoco)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/akakura/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/reoen/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/hong_bai/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/kanju/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/tiv/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/mignon/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/club3/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/tidsean/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/piyo_(pixiv_2308057)/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/chen_bin/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/yunsang/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/ningen_mame/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/yusha_m/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/yanyo_(ogino_atsuki)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/jima/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/misaki_kurehito/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/kani_biimu/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/dikko/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/misaka_12003-gou/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/sy4/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/ame_816/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/ke-ta/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/ama_mitsuki/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/da_mao_banlangen/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/ciloranko/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/omone_hokoma_agm/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/yoneyama_mai/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/sakura_yuki_(clochette)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/cogecha/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/dishwasher1910/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/akizero1510/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/rororo/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/sola_(solo0730)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/amai-pai/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/reia_76/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/toosaka_asagi/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/mochirong/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/netural/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/mocha_(cotton)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/blade_(galaxist)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/kome_cola/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/kcar66t/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/rurudo/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/tony_taka/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/tsukishiro_saika/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/ask_(askzy)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/karaage_bou/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/marse_(rokudaime)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/sade_abyss/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/cierra_(ra-bit)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/quan_(kurisu_tina)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/miv4t/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/waterring/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/toridamono/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/beni_shake/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/sankyo_(821-scoville)/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/shirabi/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/kaede_(yumesaki_kaede)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/qing_wu/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/fuzichoco/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/kfr/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/artsheops/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/as109/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/batsu/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/ikeuchi_tanuma/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/puriketsu_corgy/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/aosaki_yukina/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/qian_wu_atai/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/shion_(mirudakemann)/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/silver_bullet_(ecc12_8)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/shiroshisu/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/teffish/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/rin_yuu/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/toraishi_666/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/kat_(bu-kunn)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/anmi/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/kyokucho/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/pottsness/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/atdan/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/soraneko_hino/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/morikura_en/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/scottie_(phantom2)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/rhasta/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/sakkama/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/infukun/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/houkisei/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/senri_gan/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/rosumerii/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/noyu_(noyu23386566)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/kousaki_rui/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/ran'ou_(tamago_no_kimi)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/kukka/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/kesoshirou/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/dermar/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/torino_aqua/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/tokkyu/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/matanonki/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/38_(sanjuuhachi)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/yu_hydra/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/mbr90munouk/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/gin_mitsu/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/qiandaiyiyu/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/suerte/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/oli_o_o/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/ignite_(artist)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/kuse_(0201)/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/lordol/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/shexyo/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/tansuan_(ensj3875)/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/kai_(ootamuno12)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/kojo_(0124)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/liang_xing/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/lwj/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/nidaime_(doronbo)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/freng/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/jl_tan/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/yamaha_tsui/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/boris_(noborhys)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/teddy_(khanshin)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/cluseller/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/rikui_(rella2930)/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/yoshiheihe/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/yampa/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/classic_(zildjian33)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/akita_hika/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/araneesama/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/tupiao_shaonu/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/oekakizuki/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/omelet_tomato/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/siu_(siu0207)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/gomi_(hakumaiteacher)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/preview_(preview0)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/liangfen/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/uirotori/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/love_cacao/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/lubikaya/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/masaki_(ekakiningen)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/zhishi_yuyuanqiu/*.arrow:
+    repeat: 1
+- /data/sdxl/artist_arrow_dir/shellvi/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/narodenden/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/tousaki_umiko/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/kairunoburogu/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/yogisya/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/puuzaki_puuna/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/hisiya_(wldn1112)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/no_(13_10_1230)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/gray_bear/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/minami_(minamijkol)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/terada_tera/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/efuri_(riarea00)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/nekobell/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/tarou_(komekueyo)/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/rafaelaaa/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/xfate/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/void_0/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/ibara_dance/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/mijikayo/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/fkey/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/shixuexiao/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/furiousghafo/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/nishiko/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/ye_jji/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/reagan_long/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/kein_hasegawa/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/hito_komoru/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/hima_(gummyhima0423)/*.arrow:
+    repeat: 1
+- /data/sdxl/artist_arrow_dir/kasumi_saika/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/suinose/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/bangeningmeng/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/luse_maonang/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/kuu_(user_gngs5284)/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/chromatic_aberration/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/gyoukan_(jfxc)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/zhili_xingzou/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/zourion/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/soleil_(soleilmtfbwy03)/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/greem_bang/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/jindogod/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/qizhu/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/myung_yi/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/shokushi_yuu/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/dino_(dinoartforame)/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/xiao_shi_lullaby/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/yu1619khz/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/shunichi/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/wotmyijingwuyuwuqiule/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/mimyo/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/2_blankk/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/mixplin/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/akchu/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/botan_mochito/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/kihou_no_gotoku_dmc/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/bigrbear/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/umehara_sei/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/blue_gk/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/loftcat/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/hominamia/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/athenawyrm/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/sakatsuki_yakumo/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/chiaspicy/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/quasarcake/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/hukahito/*.arrow:
+    repeat: 15
+- /data/sdxl/artist_arrow_dir/letdie1414/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/miyabino_(miyabi1616)/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/iumu/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/konya_karasue/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/jason_kim/*.arrow:
+    repeat: 10
+- /data/sdxl/artist_arrow_dir/baofandxy/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/gosmfl/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/chunbuchou/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/jonsun/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/elvandec/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/ebora/*.arrow:
+    repeat: 5
+- /data/sdxl/artist_arrow_dir/shirotategosha/*.arrow:
+    repeat: 1
+- /data/sdxl/artist_arrow_dir/lccc/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/gyoku_seisyoku/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/brws/*.arrow:
+    repeat: 20
+- /data/sdxl/artist_arrow_dir/mr_goblin/*.arrow:
+    repeat: 20
