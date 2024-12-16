@@ -218,7 +218,7 @@ class StableDiffusionModelCN(pl.LightningModule):
         pooled_output = text_encoder.text_projection(pooled_output.to(text_encoder.text_projection.weight.dtype))
         pooled_output = pooled_output.to(last_hidden_state.dtype)
 
-        return pooled_outputlatent
+        return pooled_output
     @torch.no_grad()
     def get_cubic_timesteps(self,bsz,latents,timestep_end):
         t = torch.rand((bsz, ), device=latents.device)

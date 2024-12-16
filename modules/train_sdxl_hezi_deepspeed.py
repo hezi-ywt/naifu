@@ -42,6 +42,7 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
                                    multireso=config.dataset.multireso,
                                    batch_size=config.trainer.batch_size,
                                    world_size=world_size,
+                                   
                                 #    random_shrink_size_cond=config.trainer.batch_size.random_shrink_size_cond,
                                 #    merge_src_cond=config.trainer.batch_size.merge_src_cond,
                                 #    uncond_p=args.uncond_p,
@@ -54,7 +55,7 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
 
     if config.dataset.multireso:
         sampler = BlockDistributedSampler(dataset, num_replicas=world_size, rank=fabric.global_rank, seed=config.trainer.seed,
-                                          shuffle=False, drop_last=True, batch_size=config.trainer.batch_size)
+                                          shuffle=True, drop_last=True, batch_size=config.trainer.batch_size)
     else:
         sampler = DistributedSamplerWithStartIndex(dataset, num_replicas=world_size, rank=fabric.global_rank, seed=config.trainer.seed,
                                                    shuffle=False, drop_last=True)

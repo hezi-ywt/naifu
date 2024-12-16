@@ -2,17 +2,17 @@ name: test-run
 target: modules.train_sdxl_hezi_deepspeed.setup
 
 trainer:
-  model_path: /mnt/data/neta_noob2/fp16/checkpoint-e4_s30000.safetensors
+  model_path: /mnt/data/neta_noob7/fp16/checkpoint-e1_s51000.safetensors
   batch_size: 16
   resolution: 1024
   world_size: 1
-  seed: 1122
+  seed: 20221122
   wandb_id: "neta_noob"
   use_xformers: true
   accumulate_grad_batches: 2
   gradient_clip_val: 0.0
   save_format: safetensors
-  checkpoint_dir: "/mnt/data/neta_noob3/checkpoint"
+  checkpoint_dir: "/mnt/data/neta_noob8/checkpoint"
   checkpoint_freq: 1
   checkpoint_steps: 1000
   save_weights_only: true

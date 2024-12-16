@@ -199,6 +199,19 @@ class TextImageArrowStream(Dataset):
         self,
         ind,
     ):  
+        
+        # meta_info = self.index_manager.get_attribute(ind, 'meta_info')
+        # if len(meta_info) > 1:
+        #     text = eugebooru.get_ata_caption(meta_info, self.dataset_hook)
+            
+        # else:
+        #     text = self.get_original_text(ind)
+            
+            
+        # if random.random() < 0.001:
+        #     print(f"text: {text}")
+        
+        # return text
         try:
             meta_info = self.index_manager.get_attribute(ind, 'meta_info')
 
@@ -214,7 +227,7 @@ class TextImageArrowStream(Dataset):
                     try:
                         return eugebooru.get_ata_caption(meta_info, self.dataset_hook)
                     except Exception as e:
-                        print(f"Error retrieving tags: {e}")
+                        print(f"Error retrieving tags: {e}, use original text")
                         return self.get_original_text(ind)
                 else:
                     return self.get_original_text(ind)
@@ -308,7 +321,10 @@ class TextImageArrowStream(Dataset):
         origin_size = torch.asarray(target_size)
         target_size = torch.asarray(origin_size)
         crops_coords_top_left = torch.asarray(crops_coords_top_left)
-        # print(f"prompts: {text}")
+        
+        if random.random() < 0.001:    
+
+            print(f"prompts: {text}")
 
         return {
             "prompts": text,

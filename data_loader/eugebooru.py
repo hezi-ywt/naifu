@@ -321,13 +321,13 @@ def get_tags(
     styles = img_md.get('style')
     metas = img_md.get('meta')
     safety = img_md.get('safety')
-    quality = img_md.get('quality')
+    quality = img_md.get('quality') 
     score_ws3 = img_md.get('score_ws3')
     score_ws4 = img_md.get('score_ws4')
     original_size = img_md.get('original_size')
     date = img_md.get('date')
-    year = int(date.split('-')[0]) if date else None
-
+    year = int(date.split('-')[0]) if date else img_md.get('year')
+    
     # dropout artist tags with high frequency
     if artists:
         if REFINE:
@@ -421,7 +421,7 @@ def get_tags(
         tags.append(safety)
 
     # Add year and period tags
-    if date:
+    if year:
         if random.random() < 0.5:
             tags.append(f"year {year}")
         if random.random() < 0.5:
@@ -461,6 +461,11 @@ def get_tags(
     return caption
 
 
+def list2str(tags):
+    if isinstance(tags, list):
+        return ", ".join(tags)
+    return tags
+
 def get_ata_caption(
     img_md,
     dataset_hook,
@@ -470,7 +475,7 @@ def get_ata_caption(
         return ""
     captions = {}
     if 'caption_base' in img_md:
-        captions['tags'] = 15  # weight is 7
+        captions['tags'] = 10  # weight is 7
     if img_md.get('flo2_caption_ft_long'):
         captions['nl_1'] = 1
         
@@ -497,6 +502,10 @@ def get_ata_caption(
 
 
 def check2list(tags):
+    if tags is None:
+        print(f"tags is None: {tags}")
+        return []
+    
     tags = tags.split(",") if isinstance(tags, str) else tags
     for i, tag in enumerate(tags):
         tags[i] = tag.strip()
@@ -517,7 +526,7 @@ def get_ata_tags(
     character_benchmark = 1000
     character_feature_dropout_benchmark = 1000
 
-    tags = img_md['gen_tags']
+    tags = img_md.get('gen_tags')
     if tags:
         tags = check2list(tags) # 检查标签格式
         tags = tagging.alias_tags(tags)  # 更新 tag 别名
@@ -544,7 +553,7 @@ def get_ata_tags(
     safety: List[str] = img_md.get('rating_tags')
     if safety:
         safety = check2list(safety)[0]
-    quality: List[str] = img_md.get('danbooru_quality_tags')
+    quality: List[str] = img_md.get('quality_tags')
     if quality:
         quality = check2list(quality)[0]
     aesthetic_score_1: float = img_md.get('aesthetic_score_1',None)
@@ -683,8 +692,9 @@ def get_ata_tags(
             tags.append('worst aesthetic')
 
     # 添加质量标
-    if random.random() < ATA_QUALITY_TO_ADD_PROB.get(quality, 0):
-        tags.append(quality)
+    if random.random() < ATA_QUALITY_TO_ADD_PROB.get(list2str(quality), 0):
+        
+        tags.append(list2str(quality))
 
 
     # 标签洗牌

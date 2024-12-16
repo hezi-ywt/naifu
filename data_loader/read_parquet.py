@@ -75,17 +75,38 @@ def format_meta_data(record):
         
     return formatted_record
 
-def list2str(tags):
-    
+def random_list(tags):
+    if isinstance(tags, str):
+        tags = tags.split(",")
+        tags = format_tag_list(tags)
     if len(tags) == 0:
-        return ""
+        return []
     else:
         #reorder the tags
         tags = random.sample(tags, len(tags))
+        return tags
+
+def list2str(tags):
+    if len(tags) == 0:
+        return ""
+    else:
         return ", ".join(tags)
-    
+
+
+def format_tag(tag_string):
+    if len(tag_string) > 3:
+        tag_string = tag_string.replace("_", " ")
+
+    tag_string = tag_string.strip()
+    return tag_string
+
+def format_tag_list(tag_list):
+    return [format_tag(tag) for tag in tag_list]
+
 def add_base_caption(record):
-    caption_base = list2str(record['special_tags']) + ", " + list2str(record['character_tags']) + ", " + list2str(record["copyright_tags"]) + ", "  + list2str(record['artist_tags']) + ", " + list2str(record['gen_tags']) + ", " + list2str(record['meta_tags']) + ", " + list2str(record['rating_tags']) + ", " + list2str(record['quality_tags'])
+    caption_base = random_list(record['special_tags']) + random_list(record['character_tags']) + random_list(record["copyright_tags"]) +  random_list(record['artist_tags'])  + random_list(record['gen_tags']) +  random_list(record['meta_tags']) +  random_list(record['rating_tags']) +  random_list(record['quality_tags'])
+    caption_base = format_tag_list(caption_base)
+    caption_base = list2str(caption_base)
     return caption_base
 
 def add_flo2_caption(record, danbooru_flo2_caption_ft_long):
@@ -111,10 +132,20 @@ def gen_meta_by_id(df, id, danbooru_flo2_caption_ft_long):
         return add_flo2_caption(formatted_record, danbooru_flo2_caption_ft_long)
     else:
         return None
+
+def format2webui(tag_string):
+    tags = tag_string.split(",")
+    tags = [format_tag(tag) for tag in tags]
     
+    for i, tag in enumerate(tags):
+        tags[i] = tag.replace("(", r"\(").replace(")", r"\)")
+    tags = list2str(tags)
+    return tags
+
+
 if __name__ == '__main__':
     start = time.time()
-    danbooru_parquets_path2 ="/mnt/data/Booru-parquets/danbooru.parquet"
+    # danbooru_parquets_path2 ="/mnt/data/Booru-parquets/danbooru.parquet"
     danbooru_parquets_path ="/mnt/data/danbooru_newest-all/table.parquet"
     nlp_path = "/mnt/data/Booru-parquets/danbooru_flo2_caption_ft_long.json"
     with open(nlp_path, "r") as f:
@@ -122,8 +153,8 @@ if __name__ == '__main__':
 
     
     # 读取单个 Parquet 文件
-    df = pd.read_parquet(danbooru_parquets_path2)
-    df_add = pd.read_parquet(danbooru_parquets_path)
+    # df = pd.read_parquet(danbooru_parquets_path2)
+    df = pd.read_parquet(danbooru_parquets_path)
     print(f"Time taken to read the Parquet file: {time.time() - start} seconds")
     
     for column in df.columns:
@@ -132,13 +163,15 @@ if __name__ == '__main__':
         print("-" * 30)
     # 主程序逻辑
     start = time.time()
-    id = 7400000
+    id = 8128264
     record = get_meta_data_by_id(df, id)
     print(record)
     record = gen_meta_by_id(df, id, danbooru_flo2_caption_ft_long)
     print(record)
     print(f"Time taken: {time.time() - start} seconds")
-    
+    caption = add_base_caption(record)
+
+    print(format2webui(caption))
     #get max id
     max_id = df['id'].max()
     
