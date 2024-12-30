@@ -44,9 +44,9 @@ def arrow_to_json(args):
 
 def main():
     # arrow文件目录
-    arrow_dir = r"/mnt/data/arrowdata/danbooru_newest-webp-4Mpixel-all"
+    arrow_dir = r"/mnt/data/arrowdata/danbooru2024-webp-4Mpixel"
     # 输出json目录
-    json_dir = r"/mnt/data/jsondata/danbooru_newest-webp-4Mpixel-all"
+    json_dir = r"/mnt/data/jsondata/danbooru2024-webp-4Mpixel"
     
     # 创建输出目录
     os.makedirs(json_dir, exist_ok=True)

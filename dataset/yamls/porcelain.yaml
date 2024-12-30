@@ -5,6 +5,9 @@ source:
 # - /mnt/data/arrowdata/danbooru2024-webp-4Mpixel/*.arrow:
 #     repeat: 1
 
+- /mnt/data/real/*.arrow:
+    repeat: 2
+
 - /mnt/data/arrowdata/char3/*.arrow:
     repeat: 1
 

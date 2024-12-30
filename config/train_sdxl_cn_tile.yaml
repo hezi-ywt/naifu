@@ -5,7 +5,7 @@ trainer:
   sdxl_model_path: /mnt/data/neta_noob8/fp16/checkpoint-e2_s11240.safetensors
   # sdxl_model_path: /data/stable-diffusion-xl-base-1.0/sd_xl_base_1.0.safetensors
   cn_model_path: /mnt/data/controlnet-tile-sdxl-1.0/
-  batch_size: 8
+  batch_size: 4
   resolution: 1024
   world_size: 1
   seed: 20221122
@@ -13,10 +13,10 @@ trainer:
   use_xformers: false
   enable_gradient_checkpointing: false
   enable_xformers_memory_efficient_attention: false
-  accumulate_grad_batches: 1
+  accumulate_grad_batches: 2
   gradient_clip_val: 0
   save_format: safetensors
-  checkpoint_dir: "/mnt/data/neta_noob_tile3/"
+  checkpoint_dir: "/mnt/data/neta_noob_tile7/"
   checkpoint_freq: 1
   checkpoint_steps: 1000
   save_weights_only: true
