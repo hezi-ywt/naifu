@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sd-training
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sd-training
+  template:
+    metadata:
+      labels:
+        app: sd-training
+    spec:
+      volumes:
+      - name: dshm
+        emptyDir:
+          sizeLimit: 15Gi
+          medium: Memory
+      - name: data
+        hostPath:
+          path: /app
+      - name: data1
+        hostPath:
+          path: /data
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                - node01
+      containers:
+      - name: trainer
+        image: 214.28.51.66:5000/naifu 
+        env:
+          - name: http_proxy
+            value: "http://214.28.51.55:13128" 
+          - name: https_proxy
+            value: "http://214.28.51.55:13128"
+        resources:
+          requests:
+            nvidia.com/gpu: 8
+          limits:
+            nvidia.com/gpu: 8
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        - name: data
+          mountPath: /app
+        - name: data1
+          mountPath: /data
+        command:
+          - /bin/bash
+          - -c
+          - |
+            pip install /app/xformers-0.0.29+8c240810.d20240920-cp310-cp310-linux_x86_64.whl && \
+            cp -r /app/naifu /workspace
+            cd IndexKits
+            pip install -e .
+            cd ..
+            bash build.sh
+            echo "Finished installing xformers." && \
+            python trainer.py  /app/naifu_train2.yaml
+      imagePullSecrets:
+      - name: docker-secret

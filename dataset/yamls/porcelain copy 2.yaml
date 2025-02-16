@@ -1,0 +1,74 @@
+source:
+- /mnt/data/arrowdata/danbooru_newest-webp-4Mpixel-all/*.arrow:
+    repeat: 1
+    
+# - /mnt/data/arrowdata/danbooru2024-webp-4Mpixel/*.arrow:
+#     repeat: 1
+
+- /mnt/data/real/*.arrow:
+    repeat: 2
+
+- /mnt/data/arrowdata/char3/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/char/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/char2/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/danbooru_style/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/out_style/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/photo_data/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/char_old/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/neta_1/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/neta_/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/lgjs_style/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/12_8_add/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/12_16/*.arrow:
+    repeat: 1
+
+- /mnt/data/arrowdata/hy_artists/repeat_10/*.arrow:
+    repeat: 3
+- /mnt/data/arrowdata/hy_artists/repeat_9/*.arrow:
+    repeat: 3
+- /mnt/data/arrowdata/hy_artists/repeat_8/*.arrow:
+    repeat: 3
+- /mnt/data/arrowdata/hy_artists/repeat_7/*.arrow:
+    repeat: 3
+- /mnt/data/arrowdata/hy_artists/repeat_6/*.arrow:
+    repeat: 3
+- /mnt/data/arrowdata/hy_artists/repeat_5/*.arrow:
+    repeat: 3
+- /mnt/data/arrowdata/hy_artists/repeat_4/*.arrow:
+    repeat: 3
+- /mnt/data/arrowdata/hy_artists/repeat_3/*.arrow:
+    repeat: 2
+- /mnt/data/arrowdata/hy_artists/repeat_2/*.arrow:
+    repeat: 2
+- /mnt/data/arrowdata/hy_artists/repeat_1/*.arrow:
+    repeat: 2
+    
+# filter:
+#     md5:
+#      -  name: danbooru_unusual_aspect_ratio_md5
+#         path: /mnt/data/naifu/dataset/md5/danbooru_unusual_aspect_ratio_md5.txt
+#         type: list
+#         action: in
+#         is_valid: false
