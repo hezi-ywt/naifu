@@ -74,8 +74,11 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
     if fabric.is_global_zero and os.name != "nt":
         print(f"\n{ModelSummary(model, max_depth=1)}\n")
 
-    model.model = fabric.setup(model.model)
-    optimizer = fabric.setup_optimizers(optimizer)
+    model.model, optimizer = fabric.setup(model.model, optimizer)
+    model.model.mark_forward_method("forward_with_cfg")
+
+    if hasattr(model, "setup"):
+        model.setup(fabric)
     
     dataloader = fabric.setup_dataloaders(dataloader)
     return model, dataset, dataloader, optimizer, scheduler

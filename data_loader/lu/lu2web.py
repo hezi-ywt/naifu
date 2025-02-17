@@ -29,7 +29,7 @@ def process_image_data(json_file_path):
             
             # 创建要保存的数据
             output_data = {
-                'joycaption': item['prompt']
+                'joycaption': item['joycaption']
             }
             
             # 保存JSON文件
@@ -40,7 +40,7 @@ def process_image_data(json_file_path):
 
 if __name__ == "__main__":
     # 假设源JSON文件路径为 data/tpony_data.json
-    json_file_path = "/root/autodl-tmp/data/tpony_data.json"
+    json_file_path = "/data/soso/2_tpony-v7_metadata_updated.json"
     process_image_data(json_file_path)
 
 

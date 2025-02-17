@@ -17,7 +17,7 @@ from flash_attn.bert_padding import index_first_axis, pad_input, unpad_input  # 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from common.logging import logger
 
 def modulate(x, scale):
     return x * (1 + scale.unsqueeze(1))
@@ -686,12 +686,19 @@ class NextDiT(nn.Module):
         img_sizes = [(img.size(1), img.size(2)) for img in x]
         l_effective_img_len = [(H // pH) * (W // pW) for (H, W) in img_sizes]
 
+
         max_seq_len = max(
             (cap_len+img_len for cap_len, img_len in zip(l_effective_cap_len, l_effective_img_len))
         )
         max_cap_len = max(l_effective_cap_len)
         max_img_len = max(l_effective_img_len)
-
+        # logger.info(f"l_effective_cap_len: {l_effective_cap_len}")
+        # logger.info(f"l_effective_img_len: {l_effective_img_len}")
+        # logger.info(f"img_sizes: {img_sizes}")
+        # logger.info(f"max_seq_len: {max_seq_len}")
+        # logger.info(f"max_cap_len: {max_cap_len}")
+        # logger.info(f"max_img_len: {max_img_len}")
+        # logger.info(f"bsz: {bsz}")
         position_ids = torch.zeros(bsz, max_seq_len, 3, dtype=torch.int32, device=device)
 
         for i in range(bsz):

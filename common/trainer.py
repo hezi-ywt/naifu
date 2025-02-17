@@ -3,11 +3,13 @@ import time
 
 import torch
 import lightning as pl
+from tqdm import tqdm
 
 from common.utils import *
 from common.logging import logger
 from omegaconf import OmegaConf
 from pathlib import Path
+from lightning.fabric.strategies import DeepSpeedStrategy
 
 class Trainer:
     def __init__(self, fabric: pl.Fabric, config: OmegaConf):
@@ -29,7 +31,10 @@ class Trainer:
         self.dataloader = dataloader
         self.global_step = int(config.get("global_step", 0))
         self.current_epoch = int(config.get("current_epoch", 0))
-
+        
+        strategy_path = self.model.config.lightning.get("strategy", "")
+        self.is_deepspeed = isinstance(self.fabric.strategy, DeepSpeedStrategy)
+                
     def prepare_logger(self):
         """Prepare the logger and log hyperparameters if the logger is not CSVLogger."""
         fabric = self.fabric
@@ -304,7 +309,11 @@ class Trainer:
                 if is_accumulating:
                     continue
 
-                if grad_clip_val > 0:
+                # 检查是否使用 DeepSpeed 策略
+
+                # if is_deepspeed:
+                #     logger.info("使用DeepSpeed策略")
+                if grad_clip_val > 0 and not self.is_deepspeed:
                     grad_norm = self.fabric.clip_gradients(
                         module=fabric_module, 
                         optimizer=self.optimizer, 

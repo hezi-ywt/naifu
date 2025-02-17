@@ -12,23 +12,19 @@ from .dpm_solver import NoiseScheduleFlow, model_wrapper, DPM_Solver
 
 
 class ModelType(enum.Enum):
+    """模型输出类型的枚举类
     """
-    Which type of output the model predicts.
-    """
-
-    NOISE = enum.auto()  # the model predicts epsilon
-    SCORE = enum.auto()  # the model predicts \nabla \log p(x)
-    VELOCITY = enum.auto()  # the model predicts v(x)
+    NOISE = enum.auto()    # 模型预测噪声 ε
+    SCORE = enum.auto()    # 模型预测分数函数 ∇ log p(x)
+    VELOCITY = enum.auto() # 模型预测速度场 v(x)
 
 
 class PathType(enum.Enum):
+    """路径类型的枚举类
     """
-    Which type of path to use.
-    """
-
-    LINEAR = enum.auto()
-    GVP = enum.auto()
-    VP = enum.auto()
+    LINEAR = enum.auto()  # 线性插值路径
+    GVP = enum.auto()     # 广义VP路径
+    VP = enum.auto()      # VP(Variance Preserving)路径
 
 
 class WeightType(enum.Enum):
@@ -43,6 +39,18 @@ class WeightType(enum.Enum):
 
 class Transport:
     def __init__(self, *, model_type, path_type, loss_type, train_eps, sample_eps, snr_type, do_shift, seq_len):
+        """Transport类初始化
+        Args:
+            model_type: 模型类型(NOISE/SCORE/VELOCITY)
+            path_type: 路径类型(LINEAR/GVP/VP)
+            loss_type: 损失函数类型
+            train_eps: 训练时的精度参数
+            sample_eps: 采样时的精度参数
+            snr_type: 信噪比类型
+            do_shift: 是否进行时间偏移
+            seq_len: 序列长度
+        """
+        # 路径选项字典
         path_options = {
             PathType.LINEAR: path.ICPlan,
             PathType.GVP: path.GVPCPlan,
@@ -54,15 +62,16 @@ class Transport:
         self.path_sampler = path_options[path_type]()
         self.train_eps = train_eps
         self.sample_eps = sample_eps
-
         self.snr_type = snr_type
         self.do_shift = do_shift
         self.seq_len = seq_len
 
     def prior_logp(self, z):
-        """
-        Standard multivariate normal prior
-        Assume z is batched
+        """计算标准多元正态分布的对数概率
+        Args:
+            z: 输入张量
+        Returns:
+            对数概率值
         """
         shape = th.tensor(z.size())
         N = th.prod(shape[1:])
@@ -98,28 +107,38 @@ class Transport:
         return t0, t1
 
     def sample(self, x1):
-        """Sampling x0 & t based on shape of x1 (if needed)
+        """基于输入数据生成采样
         Args:
-          x1 - data point; [batch, *dim]
+            x1: 输入数据点 [batch, *dim]
+        Returns:
+            t: 时间步长
+            x0: 初始噪声
+            x1: 输入数据
         """
+        # 生成初始噪声
         if isinstance(x1, (list, tuple)):
             x0 = [th.randn_like(img_start) for img_start in x1]
         else:
             x0 = th.randn_like(x1)
+            
         t0, t1 = self.check_interval(self.train_eps, self.sample_eps)
 
+        # 根据snr_type选择采样策略
         if self.snr_type.startswith("uniform"):
+            # 均匀采样
             assert t0 == 0.0 and t1 == 1.0, "not implemented."
             if "_" in self.snr_type:
                 _, t0, t1 = self.snr_type.split("_")
                 t0, t1 = float(t0), float(t1)
             t = th.rand((len(x1),)) * (t1 - t0) + t0
         elif self.snr_type == "lognorm":
+            # 对数正态分布采样
             u = th.normal(mean=0.0, std=1.0, size=(len(x1),))
             t = 1 / (1 + th.exp(-u)) * (t1 - t0) + t0
         else:
             raise NotImplementedError("Not implemented snr_type %s" % self.snr_type)
 
+        # 时间偏移处理
         if self.do_shift:
             base_shift: float = 0.5
             max_shift: float = 1.15
@@ -239,17 +258,13 @@ class Transport:
 
 
 class Sampler:
-    """Sampler class for the transport model"""
-
-    def __init__(
-        self,
-        transport,
-    ):
-        """Constructor for a general sampler; supporting different sampling methods
+    """采样器类,实现各种采样策略"""
+    
+    def __init__(self, transport):
+        """初始化采样器
         Args:
-        - transport: an tranport object specify model prediction & interpolant type
+            transport: Transport对象,指定模型预测和插值类型
         """
-
         self.transport = transport
         self.drift = self.transport.get_drift()
         self.score = self.transport.get_score()
@@ -312,14 +327,16 @@ class Sampler:
         last_step_size=0.04,
         num_steps=250,
     ):
-        """returns a sampling function with given SDE settings
+        """SDE采样函数
         Args:
-        - sampling_method: type of sampler used in solving the SDE; default to be Euler-Maruyama
-        - diffusion_form: function form of diffusion coefficient; default to be matching SBDM
-        - diffusion_norm: function magnitude of diffusion coefficient; default to 1
-        - last_step: type of the last step; default to identity
-        - last_step_size: size of the last step; default to match the stride of 250 steps over [0,1]
-        - num_steps: total integration step of SDE
+            sampling_method: 采样方法,默认为Euler-Maruyama
+            diffusion_form: 扩散系数形式,默认为SBDM
+            diffusion_norm: 扩散系数大小,默认为1
+            last_step: 最后一步类型,默认为Mean
+            last_step_size: 最后一步步长
+            num_steps: 总积分步数
+        Returns:
+            采样函数
         """
 
         if last_step is None:
@@ -363,24 +380,40 @@ class Sampler:
 
         return _sample
     
-    def sample_dpm(
-        self,
-        model,
-        model_kwargs=None,
-    ):
-
+    def sample_dpm(self, model, model_kwargs=None):
+        """DPM-Solver++采样
+        Args:
+            model: 模型
+            model_kwargs: 模型额外参数
+        Returns:
+            DPM-Solver++采样器
+        """
+        # 初始化噪声调度
         noise_schedule = NoiseScheduleFlow(schedule="discrete_flow")
 
+        # 定义噪声预测函数
         def noise_pred_fn(x, t_continuous):
-            output = model(x, 1 - t_continuous, **model_kwargs)
-            _, sigma_t = noise_schedule.marginal_alpha(t_continuous), noise_schedule.marginal_std(t_continuous)
             try:
+                # 使用 weights_only=False 加载模型
+                output = model(x, 1 - t_continuous, **model_kwargs)
+                _, sigma_t = noise_schedule.marginal_alpha(t_continuous), noise_schedule.marginal_std(t_continuous)
                 noise = x - (1 - expand_dims(sigma_t, x.dim()).to(x)) * output
-            except:
+            except Exception as e:
+                # 如果出错,尝试使用第一个输出
+                output = model(x, 1 - t_continuous, **model_kwargs)
+                _, sigma_t = noise_schedule.marginal_alpha(t_continuous), noise_schedule.marginal_std(t_continuous)
                 noise = x - (1 - expand_dims(sigma_t, x.dim()).to(x)) * output[0]
             return noise
 
-        return DPM_Solver(noise_pred_fn, noise_schedule, algorithm_type="dpmsolver++").sample
+        # 使用 weights_only=False 初始化 DPM_Solver
+        solver = DPM_Solver(
+            noise_pred_fn, 
+            noise_schedule,
+            algorithm_type="dpmsolver++",
+            weights_only=False
+        )
+        
+        return solver.sample
 
 
     def sample_ode(
@@ -394,14 +427,19 @@ class Sampler:
         do_shift=False,
         time_shifting_factor=None, 
     ):
-        """returns a sampling function with given ODE settings
+        """ODE采样函数
         Args:
-        - sampling_method: type of sampler used in solving the ODE; default to be Dopri5
-        - num_steps:
-            - fixed solver (Euler, Heun): the actual number of integration steps performed
-            - adaptive solver (Dopri5): the number of datapoints saved during integration; produced by interpolation
-        - atol: absolute error tolerance for the solver
-        - rtol: relative error tolerance for the solver
+            sampling_method: 采样方法,默认为dopri5
+            num_steps: 步数
+                - 固定求解器(Euler,Heun): 实际积分步数
+                - 自适应求解器(Dopri5): 保存的数据点数量
+            atol: 绝对误差容限
+            rtol: 相对误差容限
+            reverse: 是否反向
+            do_shift: 是否进行时间偏移
+            time_shifting_factor: 时间偏移因子
+        Returns:
+            采样函数
         """
 
         # for flux

@@ -27,7 +27,7 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     checkpoint_wrapper,
 )
 from models.lumina import models
-from models.lumina.transport import create_transport
+from models.lumina.transport import create_transport, Sampler
 from lightning.pytorch.utilities import rank_zero_only
 from safetensors.torch import save_file
 from modules.config_sdxl_base import model_config
@@ -41,12 +41,9 @@ from transformers import (
     AutoTokenizer,
     AutoModel,
 )
+from torchvision.transforms.functional import to_pil_image
 
 
-
-# define the LightningModule
-
-from modules.sdxl_utils import get_hidden_states_sdxl
 
 
 class Lumina2Model(pl.LightningModule):
@@ -59,7 +56,12 @@ class Lumina2Model(pl.LightningModule):
 
     def init_model(self):
         self.build_models()
-       
+        self.to(self.target_device)
+        
+        self.batch_size = self.config.trainer.batch_size
+        self.vae_encode_bsz = self.config.advanced.get("vae_encode_batch_size", self.batch_size)
+        if self.vae_encode_bsz < 0:
+            self.vae_encode_bsz = self.batch_size
 
     def build_models(self):
         trainer_cfg = self.config.trainer
@@ -137,7 +139,9 @@ class Lumina2Model(pl.LightningModule):
         if self.config.advanced.get("use_ema", True):
             logger.info("Using EMA")
             self.model_ema = deepcopy(self.model)
-        if self.config.trainer.get("resume", None) is not None:
+            self.model_ema.requires_grad_(False)  # EMA 模型不需要梯度
+            
+        if self.config.model.get("resume", None) is not None:
             logger.info(f"Resuming model weights from: {self.config.model.resume}")
             self.model.load_state_dict(
                 torch.load(
@@ -149,8 +153,9 @@ class Lumina2Model(pl.LightningModule):
                 ),
                 strict=True,
             )
-            logger.info(f"Resuming ema weights from: {self.config.model.resume}")
-            if hasattr(self, "model_ema"):
+            
+            if hasattr(self, "model_ema") and os.path.exists(os.path.join(self.config.model.resume, "consolidated_ema.00-of-01.pth")):
+                logger.info(f"Resuming ema weights from: {self.config.model.resume}")
                 self.model_ema.load_state_dict(
                     torch.load(
                         os.path.join(
@@ -249,41 +254,11 @@ class Lumina2Model(pl.LightningModule):
         self.model.train()
         self.model.requires_grad_(True)
 
-        # self.text_encoder.to(self.target_device)
         self.text_encoder.requires_grad_(False)
+        self.vae.requires_grad_(False)
+
         # self.tokenizer.to(self.target_device)
         # self.tokenizer.requires_grad_(False)
-
-
-    def init_model(self):
-        self.build_models()
-        advanced = self.config.get("advanced", {})
-        self.noise_scheduler = DDPMScheduler(
-            beta_start=0.00085,
-            beta_end=0.012,
-            beta_schedule="scaled_linear",
-            num_train_timesteps=1000,
-            clip_sample=False,
-        )
-
-        # allow custom class
-        if self.config.get("noise_scheduler"):
-            scheduler_cls = get_class(self.config.noise_scheduler.name)
-            self.noise_scheduler = scheduler_cls(**self.config.noise_scheduler.params)
-
-        self.to(self.target_device)
-
-
-        self.batch_size = self.config.trainer.batch_size
-        self.vae_encode_bsz = self.config.advanced.get("vae_encode_batch_size", self.batch_size)
-        if self.vae_encode_bsz < 0:
-            self.vae_encode_bsz = self.batch_size
-
-        if advanced.get("zero_terminal_snr", False):
-            apply_zero_terminal_snr(self.noise_scheduler)
-
-        if hasattr(self.noise_scheduler, "alphas_cumprod"):
-            cache_snr_values(self.noise_scheduler, self.target_device)
 
 
     def apply_average_pool(self,latent, factor):
@@ -554,7 +529,7 @@ class Lumina2Model(pl.LightningModule):
             if hasattr(self, "model_ema"):
                 torch.save(self.model_ema.state_dict(), os.path.join(model_path, "consolidated_ema.00-of-01.pth"))
             #copy
-            arg_path = "/root/autodl-tmp/Lumina-Image-2.0/results2/NextDiT_2B_GQA_patch2_Adaln_Refiner_bs4_lr2e-4_bf16/checkpoints/0000550/model_args.pth"
+            arg_path = os.path.join(self.config.trainer.model_path, "model_args.pth")
             shutil.copy(arg_path, os.path.join(model_path, "model_args.pth"))
             # opt_state_fn = f"optimizer.{dist.get_rank():05d}-of-" f"{.get_world_size():05d}.pth"
             # torch.save(self.optimizer.state_dict(), os.path.join(model_path, opt_state_fn))
@@ -582,3 +557,280 @@ class Lumina2Model(pl.LightningModule):
     #         torch.save(self.model_ema.state_dict(), save_path)
 
 
+
+    def generate_samples(self, logger, current_epoch, global_step):
+        if hasattr(self, "_fabric_wrapped"):
+            if self._fabric_wrapped.world_size > 2:
+                self.generate_samples_dist(logger, current_epoch, global_step)
+                return self._fabric_wrapped.barrier()
+                
+        return self.generate_samples_seq(logger, current_epoch, global_step)
+
+    def generate_samples_dist(self, logger, current_epoch, global_step):
+        config = self.config.sampling
+        generator = torch.Generator(device="cpu").manual_seed(config.seed)
+        prompts = list(config.prompts)
+        images = []
+        size = (config.get("height", 1024), config.get("width", 1024))
+        self.model.eval()
+
+        rank = 0
+        world_size = self._fabric_wrapped.world_size
+        rank = self._fabric_wrapped.global_rank
+
+        local_prompts = prompts[rank::world_size]
+        for idx, prompt in tqdm(
+            enumerate(local_prompts), desc=f"Sampling (Process {rank})", total=len(local_prompts), leave=False
+        ):
+            image = self.sample(prompt, size=size, generator=generator)
+            image[0].save(
+                Path(config.save_dir)
+                / f"sample_e{current_epoch}_s{global_step}_p{rank}_{idx}.png"
+            )
+            images.append((image[0], prompt))
+
+        gathered_images = [None] * world_size
+        dist.all_gather_object(gathered_images, images)
+        
+        self.model.train()
+        if rank in [0, -1]:
+            all_images = []
+            all_prompts = []
+            for entry in gathered_images:
+                if isinstance(entry, list):
+                    entry = entry[0]
+                imgs, prompts = entry
+                all_prompts.append(prompts)
+                all_images.append(imgs)
+
+            if config.use_wandb and logger and "CSVLogger" != logger.__class__.__name__:
+                logger.log_image(
+                    key="samples", images=all_images, caption=all_prompts, step=global_step
+                )
+    
+    @rank_zero_only
+    def generate_samples_seq(self, logger, current_epoch, global_step):
+        config = self.config.sampling
+        generator = torch.Generator(device="cpu").manual_seed(config.seed)
+        prompts = list(config.prompts)
+        images = []
+        size = (config.get("height", 1024), config.get("width", 1024))
+        self.model.eval()
+
+        for idx, prompt in tqdm(
+            enumerate(prompts), desc="Sampling", total=len(prompts), leave=False
+        ):
+            image = self.sample(prompt, size=size, generator=generator)
+            image[0].save(
+                Path(config.save_dir)
+                / f"sample_e{current_epoch}_s{global_step}_{idx}.png"
+            )
+            images.extend(image)
+
+        self.model.train()
+        if config.use_wandb and logger and "CSVLogger" != logger.__class__.__name__:
+            logger.log_image(
+                key="samples", images=images, caption=prompts, step=global_step
+            )
+
+    @torch.inference_mode()
+    def sample(
+        self,
+        prompt,
+        negative_prompt="",
+        generator=None,
+        size=(1024, 1024),
+        steps=25,
+        guidance_scale=4.0,
+        solver="euler",
+        path_type="Linear",
+        prediction="velocity",
+        loss_weight=None,
+        train_eps=None,
+        sample_eps=None,
+        atol=1e-6,
+        rtol=1e-3,
+        reverse=False,
+        time_shifting_factor=1.0,
+    ):
+        """使用Lumina2模型生成图像样本"""
+        system_prompt = "You are an assistant designed to generate anime images with the highest degree of image-text alignment based on textual prompts. <Prompt Start>  "
+
+        try:
+            # 切换到评估模式并标记 forward_with_cfg
+            self.model.eval()
+            self.vae.eval()
+            
+            # if hasattr(self.model, "mark_forward_method"):
+            #     self.model.mark_forward_method("forward_with_cfg")
+            # elif hasattr(self.model, "_forward_module") and hasattr(self.model._forward_module, "mark_forward_method"):
+            #     self.model._forward_module.mark_forward_method("forward_with_cfg")
+            
+            # 获取模型的数据类型和设备
+            dtype = self.model.x_embedder.weight.dtype
+            device = self.target_device
+            logger.info(f"prompt: {prompt}")
+            logger.info(f"negative_prompt: {negative_prompt}")
+            
+            if isinstance(prompt, str):
+                prompt = [system_prompt + prompt]
+            else:
+                prompt = [system_prompt + p for p in prompt]
+            n = len(prompt)
+            negative_prompt = [system_prompt +  negative_prompt] * n
+            
+            # 编码正面和负面提示词
+            with torch.no_grad():
+                cap_feats, cap_mask = self.encode_prompt(
+                    prompt + negative_prompt, 
+                    self.text_encoder,
+                    self.tokenizer,
+                    proportion_empty_prompts=0.0,
+                    is_train=False
+                )
+                # 确保提示词嵌入的数据类型匹配
+                cap_feats = cap_feats.to(device=device, dtype=dtype)
+                cap_mask = cap_mask.to(device=device)
+            
+                # 设置latent的尺寸
+                w, h = size
+                latent_w, latent_h = int(w // 8), int(h // 8)
+                
+                # 修复 generator 设备问题
+                if generator is not None:
+                    if isinstance(generator, torch.Generator) and generator.device.type != "cuda":
+                        device_generator = torch.Generator(device=device)
+                        device_generator.manual_seed(generator.initial_seed())
+                        generator = device_generator
+                
+                # 生成 latents 并确保数据类型匹配
+                z = torch.randn([1, 16, latent_h, latent_w], generator=generator, device=device, dtype=dtype)
+                z = z.repeat(n * 2, 1, 1, 1)  # 复制一份用于负面提示词
+                
+
+                
+                # 设置模型参数
+                model_kwargs = dict(
+                    cap_feats=cap_feats,
+                    cap_mask=cap_mask,
+                    cfg_scale=guidance_scale,
+                )
+                
+                # 创建采样器
+                if solver == "dpm":
+                    transport = create_transport(
+                        "Linear",
+                        "velocity",
+                    )
+                    sampler = Sampler(transport)
+                    sample_fn = sampler.sample_dpm(
+                        self.model.forward_with_cfg,
+                        model_kwargs=model_kwargs,
+                    )
+                    samples = sample_fn(
+                        z, 
+                        steps=steps, 
+                        order=2, 
+                        skip_type="time_uniform_flow", 
+                        method="multistep", 
+                        flow_shift=time_shifting_factor
+                    )
+                else:
+                    transport = create_transport(
+                        path_type,
+                        prediction,
+                        loss_weight,
+                        train_eps,
+                        sample_eps,
+                    )
+                    sampler = Sampler(transport)
+                    sample_fn = sampler.sample_ode(
+                        sampling_method=solver,
+                        num_steps=steps,
+                        atol=atol,
+                        rtol=rtol,
+                        reverse=reverse,
+                        time_shifting_factor=time_shifting_factor
+                    )
+                    
+                    # 确保时间步使用正确的数据类型
+                    def wrapped_forward_with_cfg(*args, **kwargs):
+                        # 确保所有输入张量使用正确的数据类型
+                        args = tuple(a.to(dtype=dtype) if isinstance(a, torch.Tensor) else a for a in args)
+                        kwargs = {k: v.to(dtype=dtype) if isinstance(v, torch.Tensor) and k != 'cap_mask' else v 
+                                for k, v in kwargs.items()}
+                        return self.model.forward_with_cfg(*args, **kwargs)
+                    
+                    samples = sample_fn(z, wrapped_forward_with_cfg, **model_kwargs)[-1]
+                
+                # 只保留正面提示词生成的样本
+                samples = samples[:1]
+                
+                # VAE解码前确保数据类型匹配
+                vae_dtype = self.vae.dtype  # 获取VAE的数据类型
+                samples = samples.to(dtype=vae_dtype)  # 将samples转换为VAE的数据类型
+                
+                # VAE解码
+                samples = self.vae.decode(samples / self.vae.config.scaling_factor + self.vae.config.shift_factor)[0]
+                samples = (samples + 1.0) / 2.0
+                samples = samples[:1]
+
+                # 转换为PIL图像前的处理
+                samples = samples.float()
+                samples = torch.nan_to_num(samples, nan=0.0, posinf=1.0, neginf=0.0)  # 处理无效值
+                samples.clamp_(0.0, 1.0)  # 再次确保值在正确范围内
+            
+            # 转换为PIL图像
+            images = []
+            for sample in samples:
+                # 确保图像数据是有效的
+                sample = sample.cpu()
+                if torch.isnan(sample).any() or torch.isinf(sample).any():
+                    logger.warning("检测到无效的图像数据，将替换为有效值")
+                    sample = torch.nan_to_num(sample, nan=0.0, posinf=1.0, neginf=0.0)
+                    sample.clamp_(0.0, 1.0)
+                
+                image = to_pil_image(sample)
+                images.append(image)
+            
+
+            return images
+
+        finally:
+            # 恢复训练模式
+            self.model.train()
+            self.vae.train()
+
+    # def setup(self, fabric, *args, **kwargs):
+    #     """在模型被Fabric包装后调用此方法"""
+    #     # 初始化噪声调度器
+    #     self.init_noise_scheduler()
+        
+    #     # 标记 forward 为默认前向方法
+    #     if hasattr(self.model, "mark_forward_method"):
+    #         self.model.mark_forward_method("forward")
+    #     elif hasattr(self.model, "_forward_module") and hasattr(self.model._forward_module, "mark_forward_method"):
+    #         self.model._forward_module.mark_forward_method("forward")
+
+    def init_noise_scheduler(self):
+        """初始化噪声调度器"""
+        self.noise_scheduler = DDPMScheduler(
+            beta_start=0.00085,
+            beta_end=0.012,
+            beta_schedule="scaled_linear",
+            num_train_timesteps=1000,
+            clip_sample=False,
+        )
+
+        # allow custom noise scheduler
+        if self.config.get("noise_scheduler"):
+            scheduler_cls = get_class(self.config.noise_scheduler.name)
+            self.noise_scheduler = scheduler_cls(**self.config.noise_scheduler.params)
+
+        # 处理 zero_terminal_snr
+        advanced = self.config.get("advanced", {})
+        if advanced.get("zero_terminal_snr", False):
+            apply_zero_terminal_snr(self.noise_scheduler)
+
+        if hasattr(self.noise_scheduler, "alphas_cumprod"):
+            cache_snr_values(self.noise_scheduler, self.target_device)

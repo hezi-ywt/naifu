@@ -207,6 +207,8 @@ class TextImageArrowStream(Dataset):
                     else:
                         caption_dict[tag_key] = json_data[tag_key]
         text = random.choice(list(caption_dict.values()))
+        system_prompt = "You are an assistant designed to generate anime images with the highest degree of image-text alignment based on textual prompts. <Prompt Start>  "
+        text = system_prompt + text
         return text
     
 

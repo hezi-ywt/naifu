@@ -3,29 +3,29 @@ target: modules.lumina2_model_train.setup
 adaptive_loss_weight: True
 
 model: 
-  tokenizer_path: /root/autodl-tmp/Lumina-Image-2.0/tokenizer
-  text_encoder_path: /root/autodl-tmp/Lumina-Image-2.0/text_encoder
+  tokenizer_path: /nieta/Lumina-Image-2.0/tokenizer
+  text_encoder_path: /nieta/Lumina-Image-2.0/text_encoder
   model_name: NextDiT_2B_GQA_patch2_Adaln_Refiner
   qk_norm: True
-  resume: /root/autodl-tmp/Lumina-Image-2.0/results/NextDiT_2B_GQA_patch2_Adaln_Refiner_bs4_lr5e-5_bf16/checkpoints/0000001
+  resume: /nieta/Lumina-Image-2.0/
   
 trainer:
   auto_resume: false
-  init_from: null
+  init_from: /nieta/Lumina-Image-2.0
   checkpointing: true
-  model_path: /root/autodl-tmp/Lumina-Image-2.0
-  batch_size: 8
+  model_path: /nieta/Lumina-Image-2.0
+  batch_size: 4
   seed: 1122
   wandb_id: "lumina2_test"
   use_xformers: false
-  accumulate_grad_batches: 2
-  gradient_clip_val: 2.0
+  accumulate_grad_batches: 4
+  gradient_clip_val: 1.0
   save_format: original
-  checkpoint_dir: /root/autodl-tmp/Lumina-Image-2.0/results3
-  checkpoint_freq: 1
+  checkpoint_dir: /nieta/Lumina-Image-2.0/results3
+  checkpoint_freq: 20
   save_weights_only: true
-  max_epochs: 100
-  checkpoint_steps: 100
+  max_epochs: 1000
+  checkpoint_steps: 1000
   max_steps: -1
   resolution: 1024
 
@@ -34,13 +34,15 @@ advanced:
   no_shift: true
   train_res: [1024, 256]
   # vae_encode_batch_size: 8
-  use_ema: true
+  use_ema: false
   
 lightning:
   accelerator: gpu
-  devices: -1
+  devices: 8
+  strategy: "ddp"
   precision: bf16-mixed
-
+  strategy_params:
+    find_unused_parameters: true
 
 dataset:
   name: data_loader.arrow_load_stream.TextImageArrowStream 
@@ -68,20 +70,23 @@ scheduler:
     last_epoch: -1
 
 sampling:
-  enabled: false
+  enabled: true
   use_wandb: true
   seed: 1234
-  height: 768
-  width: 768
-  every_n_steps: 200
-  every_n_epochs: 1
-  save_dir: "samples/5"
-  prompts: 
-    - "best quality, a girl with a yellow hat and a yellow shirt, sitting, white legwear, uniform, jacket, thighhighs, bare shoulders, high contrast, paint splatter"
+  height: 1024
+  width: 1024
+  every_n_steps: 1000
+  every_n_epochs: 20
+  save_dir: "samples/7"
+  prompts:
+    - "This digital anime-style artwork depicts a humanoid snake-woman with pale skin and long, flowing white hair. She has red eyes, elf-like ears, and a slender, muscular physique with large breasts. She wears a futuristic, black and gold armored suit that accentuates her curves. Her lower body transitions into a snake tail with scales. The background is plain white, making her the focal point. The art style is detailed and polished, typical of high-quality digital illustrations."
+    - "pussy, white background, 1girl, solo focus, animal ears, hood, red_eyes, hooded_jacket, parted lips, thigh, suggestive, black_jacket, looking at viewer, sitting, kemonomimi, pov, collar, breasts, medium breasts, simple background, animal hood, black leotard, leotard, animal ear hood, nipples, paw gloves, 1boys, jacket, blush, hood up, navel, paw print, blonde hair, original, black gloves, short hair, gloves, long sleeves, collarbone, paw print gloves, hetero, pov_hands, black leotard under clothes, bangs, pov eye contact, eyebrows visible through hair"
+    - "This is a digital anime-style illustration featuring a voluptuous, red-haired female centaur with large breasts and a curvy physique. She wears a black futuristic bodysuit with gold accents and has a mechanical arm. The background is a vibrant, fiery red with swirling flames, adding intensity. The centaur's expression is fierce and determined. The art style is dynamic and detailed, with bold lines and vivid colors."
+    - "tail, virtual youtuber, black panties, very long hair, standing, cat pose, female solo, animal ears, long_hair, navel, hair between eyes, 1girl, simple background, blushing, horns, bare shoulders, black nails, white background, collar, cat_tail, hair between breasts, black choker, twintails, looking at viewer, sfw, collarbone, black hair, black bikini, fang, pov eye contact, :d, nail polish, open mouth, smile, white hair, bikini, choker, bangs, eyebrows visible through hair, orange eyes, swimsuit, bare arms, small breasts, breasts, :3, bare legs, animal hands, cat_hands, bikini top, hololive, hololive_english, bikini bottom, english text, bikini top removed"
     - "best quality, 1girl, solo, loli, cat girl, silver hair ,blue eyes, flat chest, solo, beautiful detailed background, messy hair, long hair"
-    - "masterpiece, best quality, 1girl, solo,loli,wedding dress|see-through highleg leotard, veil, elbow gloves, white thighhighs, crown, earrings, bow on waist, sideboob, lace,"
-    - "1girl, solo, shirt, thighhighs, skirt, hands on hips, white shirt, crystal, flandre scarlet, blonde hair, grey skirt, red bow, red eyes, black thighhighs, wings, white background,"
-    - "1girl,sitting,fantasy,masterpiece,best quality,(long blonde hair),(blue eyes),(floating hair),(black ribbed sweater:1.1),(red plaid skirt:1.1),(cat ears)"
-    - "1girl, 1boy, sex, ahegao, hetero, from side, nsfw"
+    - "best quality, a girl with a yellow hat and a yellow shirt, sitting, white legwear, uniform, jacket, thighhighs, bare shoulders, high contrast, paint splatter"
     - "a girl with a yellow hat and a yellow shirt, sitting, white legwear, uniform, jacket, thighhighs, bare shoulders, high contrast, paint splatter"
     - "a cat fighting with a dog"
+    - "This is a digital anime-style illustration depicting a young girl with cat ears and a tail, sleeping peacefully on a large, plush, light pink pillow. She has long, flowing white hair with a few strands tied into small buns, and her large, expressive teal eyes are closed. Her outfit consists of a light blue, long-sleeved nightgown with white fur trim around the cuffs and hem, and she is clutching a small, white plush cat toy in her arms. The background features a soft, pastel color palette with a light, fluffy texture, enhancing the cozy, serene atmosphere. The overall mood is tranquil and comforting, with a focus on the character's peaceful slumber. The artist's signature, 'Ari', is visible in the bottom right corner."
+    - "A vibrant anime-style digital illustration depicts a cute blonde girl with long, wavy hair and blue eyes, wearing a frilly, pink and white maid outfit adorned with chocolate drips and a heart-shaped bow. She has a shy, blushing expression, hands clasped near her chest. The background is plain white, highlighting her adorable, detailed attire. The art style is clean and colorful, with a soft, pastel color palette, evoking a sweet and innocent mood."
+

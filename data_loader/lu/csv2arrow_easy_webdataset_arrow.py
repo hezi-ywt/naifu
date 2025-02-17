@@ -110,7 +110,7 @@ if __name__ == '__main__':
     pool = Pool(6)
     
 
-    make_arrow_from_dir("/root/autodl-tmp/data/tpony", "/root/autodl-tmp/data/tpony_arrow")
+    make_arrow_from_dir("/data/soso/tpony_gen_sample", "/data/data_arrow/tpony_arrow")
 
     # if len(sys.argv) != 4:
     #     print("Usage: python hydit/data_loader/csv2arrow.py ${csv_root} ${output_arrow_data_path} ${pool_num}")

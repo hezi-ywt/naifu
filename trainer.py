@@ -23,9 +23,12 @@ def main():
     plugins = []
 
     strategy = config.lightning.pop("strategy", "auto")
+    strategy_params = config.lightning.pop("strategy_params", {})
     if "." in strategy:
-        _params = config.lightning.pop("strategy_params", {})
-        strategy = get_class(strategy)(**_params)
+        strategy = get_class(strategy)(**strategy_params)
+    elif strategy == "ddp":
+        from lightning.fabric.strategies import DDPStrategy
+        strategy = DDPStrategy(**strategy_params)
 
     loggers = pl.fabric.loggers.CSVLogger(".")
     if config.trainer.wandb_id != "":
