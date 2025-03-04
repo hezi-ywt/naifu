@@ -51,7 +51,7 @@ class TextImageArrowStream(Dataset):
         self.batch_size = batch_size
         self.world_size = world_size
         self.index_manager = self.load_index()
-
+        self.init_system_prompt()
         # clip params
         self.uncond_p = uncond_p
 
@@ -70,6 +70,7 @@ class TextImageArrowStream(Dataset):
                 T.RandomHorizontalFlip() if self.random_flip else T.Lambda(lambda x: x),
                 T.ToTensor(),
                 T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True),
+                
             ]
         )
         # tag_edit
@@ -116,6 +117,7 @@ class TextImageArrowStream(Dataset):
     def get_raw_image(self, index, image_key="image"):
         try:
             ret = self.index_manager.get_image(index, image_key)
+
         except Exception as e:
             self.log_fn(f'get_raw_image | Error: {e}')
             ret = Image.new("RGB", (256, 256), (255, 255, 255))
@@ -185,48 +187,118 @@ class TextImageArrowStream(Dataset):
         return image_tensor, kwargs
 
 
+    def formate_tag(self, tag_list):
+        tag_new = []
+        tag = tag.strip()
+        if len(tag) > 3:
+            tag = tag.replace("_", " ")
+        
+        tag_new.append(tag)
+        return tag_new
+
+    def danbooru_meta_to_text(self, danbooru_meta):
+        character_list = danbooru_meta.get("character",[])
+        artist_list = danbooru_meta.get("artist",[])
+        series_list = danbooru_meta.get("series",[])
+        meta_list = danbooru_meta.get("meta",[])
+        general_tag_list = danbooru_meta.get("general",[]) 
+        keep_tag_list = danbooru_meta.get("keep_tags",[])
+        if len(keep_tag_list) > 6:
+            if random.random() < 0.3:
+                general_tag_list = keep_tag_list
+        rating_list = danbooru_meta.get("rating_tags",[])
+        quality_list = danbooru_meta.get("quality_tags",[])
+        special_tag_list = danbooru_meta.get("special_tags",[])
+        all_tag_list = list(set(special_tag_list)) + list(set(character_list)) + list(set(series_list)) + list(set(artist_list)) + list(set(general_tag_list)) + list(set(meta_list)) + list(set(rating_list)) + list(set(quality_list))
+        all_tag_list = self.formate_tag(all_tag_list)
+        all_tag_text = ", ".join(all_tag_list)
+        return all_tag_text, character_list, artist_list, series_list, rating_list, quality_list
 
 
+    
+    def init_system_prompt(self):
+        self.system_prompt = {
+            "danbooru": "You are an assistant designed to generate anime images with the highest degree of image-text alignment based on danbooru tags, the danbooru tag may include the character, the artist style, the action, etc. <Prompt Start>  ",
+            "text": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start>  ",
+            "caption": "You are an assistant designed to generate high-quality images with the highest degree of image-text alignment based on textual prompts. <Prompt Start> "
+        }
 
+    def build_system_prompt(self, type,artist_list,series_list,rating_list,quality_list):
+
+        if len(artist_list) > 0:
+            if "type" == "danbooru_meta":
+                system_prompt = f"You are an artist named {', '.join(artist_list)}, you need to create works in your own style with the highest degree of image-text alignment based on danbooru tags, the danbooru tag may include the character, the artist style, the action, etc. <Prompt Start>  "
+            elif "type" == "text":
+                system_prompt = f"You are an artist named {', '.join(artist_list)}, you need to create works in your own style based on textual prompts. <Prompt Start>  "
+        else:
+            system_prompt = self.system_prompt[type]
+            
+        return system_prompt
 
     def get_original_text(self, ind):
 
-
-        # if self.index_manager.get_attribute(ind, 'captions'):
-        #     text_list = kwargs.get("caption",[""])
-        #     text = random.choice(text_list)
-        # else:
         json_data = self.index_manager.get_attribute(ind, 'text_zh')
         caption_dict = {}
-        tag_key_list = ['tags','joycaption','regular_summary']
+        tag_key_list = ['joycaption','regular_summary',"danboooru_meta","gemini_caption","tags", "tag", "caption", "doubao", "wd_tagger"]
         for tag_key in tag_key_list:
             if tag_key in json_data and json_data[tag_key] is not None:
                 if len(json_data[tag_key]) > 0:
-                    if tag_key == 'tags':
-                        caption_dict[tag_key] = json_data[tag_key].replace(' ',', ')
+
+                    if tag_key == 'danboooru_meta':
+                        all_tag_text, character_list, artist_list, series_list, rating_list, quality_list = self.danbooru_meta_to_text(json_data[tag_key])
+                        if isinstance(all_tag_text, str):
+                            caption_dict[tag_key] = [self.system_prompt["danbooru"], all_tag_text, tag_key]
+                        else:
+                            continue
+                    elif tag_key == 'gemini_caption':
+                        gemini_caption = json_data[tag_key].get("regular_summary",None)
+                        if gemini_caption is not None and len(gemini_caption) > 40:
+                            if isinstance(gemini_caption, str):
+                                caption_dict[tag_key] = [self.system_prompt["text"] , gemini_caption, tag_key]
+                            else:
+                                continue
+                        else:
+                            continue
                     else:
-                        caption_dict[tag_key] = json_data[tag_key]
+                        if len(json_data[tag_key]) > 40 and isinstance(json_data[tag_key], str):
+                            
+                            caption_dict[tag_key] = [self.system_prompt["text"] , json_data[tag_key], tag_key]
+                        else:
+                            continue
+                    
+
+                        
         text = random.choice(list(caption_dict.values()))
-        system_prompt = "You are an assistant designed to generate anime images with the highest degree of image-text alignment based on textual prompts. <Prompt Start>  "
-        text = system_prompt + text
-        return text
+        if random.random() < 0.5:
+            try:
+                caption = self.build_system_prompt(text[2],artist_list,series_list,rating_list,quality_list) + text[0] + text[1]
+            except:
+                caption = text[0] + text[1]
+        else:
+            caption = text[0] + text[1]
+
+        return caption
     
 
 
 
     def get_text(self, ind):
-        text =  self.get_original_text(ind)
-        if text == '':
+        if random.random() < 0.001:
             text = 'Generate a random image'
-        # print(f"get_text | text: {text}")
+        try:
+            text =  self.get_original_text(ind)
+        except:
+            text = 'Generate a random image'
+        # if random.random() < 0.1:
+        #     print(f"get_text | text: {text}")
         return text
 
     def __getitem__(self, ind):
         # Get text
         text = self.get_text(ind)
 
-        original_pil_image, kwargs = self.get_image_with_hwxy(ind)
-        pixel = original_pil_image  
+        image_tensor, kwargs = self.get_image_with_hwxy(ind)
+        pixel = image_tensor
         # torch.stack(original_pil_image, dim=0).contiguous()
         # target_size = kwargs["target_size"][::-1]
         # origin_size = kwargs["origin_size"][::-1]

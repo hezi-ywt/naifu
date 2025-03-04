@@ -7,86 +7,92 @@ model:
   text_encoder_path: /nieta/Lumina-Image-2.0/text_encoder
   model_name: NextDiT_2B_GQA_patch2_Adaln_Refiner
   qk_norm: True
-  resume: /nieta/Lumina-Image-2.0/
+  resume: /nieta/Lumina-Image-2.0/results_cosine_2e-4_bs64_ssss/checkpoint-e70_s102445
   
 trainer:
   auto_resume: false
   init_from: /nieta/Lumina-Image-2.0
-  checkpointing: true
+  checkpointing: false
   model_path: /nieta/Lumina-Image-2.0
-  batch_size: 4
-  seed: 1122
+  batch_size: 2
+  seed: 114514
   wandb_id: "lumina2_test"
   use_xformers: false
-  accumulate_grad_batches: 4
-  gradient_clip_val: 1.0
+  accumulate_grad_batches: 8
+  grad_clip: 2
+  gradient_clip_val: 2
   save_format: original
-  checkpoint_dir: /nieta/Lumina-Image-2.0/results3
-  checkpoint_freq: 20
+  checkpoint_dir: /nieta/Lumina-Image-2.0/results_cosine_2e-4_bs64_ssssss
+  checkpoint_freq: 1
   save_weights_only: true
-  max_epochs: 1000
+  max_epochs: 10000
   checkpoint_steps: 1000
   max_steps: -1
   resolution: 1024
 
 advanced:
-  snr_type: "uniform"
+  # snr_type: "uniform"
+  snr_type: "lognorm"
   no_shift: true
   train_res: [1024, 256]
   # vae_encode_batch_size: 8
-  use_ema: false
+  use_ema: true
   
 lightning:
   accelerator: gpu
   devices: 8
-  strategy: "ddp"
-  precision: bf16-mixed
-  strategy_params:
-    find_unused_parameters: true
+  # strategy: common.deepspeed._fast_strategy
+  strategy: "deepspeed"
+  precision: bf16
+  # strategy_params:
+  #   find_unused_parameters: true
 
 dataset:
   name: data_loader.arrow_load_stream.TextImageArrowStream 
   target_area: 1024*1024 # 1024*1024
   index_file: "dataset/porcelain/jsons/porcelain_mt.json"
   multireso: true
-  num_workers: 4
-  min_size: 256
-  max_size: 2048
-  img_path: "/root/niji-anime-1"
+  num_workers: 8
   random_flip: false
-  # process_batch_fn: "data.processors.shuffle_prompts_sdstyle"
-  max_token_length: 225 # [75, 150, 225]
 
 optimizer:
-  name: bitsandbytes.optim.AdamW8bit
+  name: torch.optim.AdamW
   params:
     lr: 5e-5
     weight_decay: 1e-2
 
 scheduler:
-  name: transformers.get_constant_schedule_with_warmup
+  name: transformers.get_cosine_schedule_with_warmup
   params:
-    num_warmup_steps: 20
+    num_warmup_steps: 1000
+    num_training_steps: 400000  # 总训练步数
+    num_cycles: 0.5  # cosine 周期数
     last_epoch: -1
 
 sampling:
   enabled: true
   use_wandb: true
   seed: 1234
-  height: 1024
+  height: 832
   width: 1024
   every_n_steps: 1000
-  every_n_epochs: 20
-  save_dir: "samples/7"
+  every_n_epochs: 1
+  save_dir: "samples/lumina2_cosine_2e-4_bs64_1024_256_ssssssssss"
   prompts:
-    - "This digital anime-style artwork depicts a humanoid snake-woman with pale skin and long, flowing white hair. She has red eyes, elf-like ears, and a slender, muscular physique with large breasts. She wears a futuristic, black and gold armored suit that accentuates her curves. Her lower body transitions into a snake tail with scales. The background is plain white, making her the focal point. The art style is detailed and polished, typical of high-quality digital illustrations."
-    - "pussy, white background, 1girl, solo focus, animal ears, hood, red_eyes, hooded_jacket, parted lips, thigh, suggestive, black_jacket, looking at viewer, sitting, kemonomimi, pov, collar, breasts, medium breasts, simple background, animal hood, black leotard, leotard, animal ear hood, nipples, paw gloves, 1boys, jacket, blush, hood up, navel, paw print, blonde hair, original, black gloves, short hair, gloves, long sleeves, collarbone, paw print gloves, hetero, pov_hands, black leotard under clothes, bangs, pov eye contact, eyebrows visible through hair"
-    - "This is a digital anime-style illustration featuring a voluptuous, red-haired female centaur with large breasts and a curvy physique. She wears a black futuristic bodysuit with gold accents and has a mechanical arm. The background is a vibrant, fiery red with swirling flames, adding intensity. The centaur's expression is fierce and determined. The art style is dynamic and detailed, with bold lines and vivid colors."
-    - "tail, virtual youtuber, black panties, very long hair, standing, cat pose, female solo, animal ears, long_hair, navel, hair between eyes, 1girl, simple background, blushing, horns, bare shoulders, black nails, white background, collar, cat_tail, hair between breasts, black choker, twintails, looking at viewer, sfw, collarbone, black hair, black bikini, fang, pov eye contact, :d, nail polish, open mouth, smile, white hair, bikini, choker, bangs, eyebrows visible through hair, orange eyes, swimsuit, bare arms, small breasts, breasts, :3, bare legs, animal hands, cat_hands, bikini top, hololive, hololive_english, bikini bottom, english text, bikini top removed"
-    - "best quality, 1girl, solo, loli, cat girl, silver hair ,blue eyes, flat chest, solo, beautiful detailed background, messy hair, long hair"
-    - "best quality, a girl with a yellow hat and a yellow shirt, sitting, white legwear, uniform, jacket, thighhighs, bare shoulders, high contrast, paint splatter"
-    - "a girl with a yellow hat and a yellow shirt, sitting, white legwear, uniform, jacket, thighhighs, bare shoulders, high contrast, paint splatter"
-    - "a cat fighting with a dog"
-    - "This is a digital anime-style illustration depicting a young girl with cat ears and a tail, sleeping peacefully on a large, plush, light pink pillow. She has long, flowing white hair with a few strands tied into small buns, and her large, expressive teal eyes are closed. Her outfit consists of a light blue, long-sleeved nightgown with white fur trim around the cuffs and hem, and she is clutching a small, white plush cat toy in her arms. The background features a soft, pastel color palette with a light, fluffy texture, enhancing the cozy, serene atmosphere. The overall mood is tranquil and comforting, with a focus on the character's peaceful slumber. The artist's signature, 'Ari', is visible in the bottom right corner."
-    - "A vibrant anime-style digital illustration depicts a cute blonde girl with long, wavy hair and blue eyes, wearing a frilly, pink and white maid outfit adorned with chocolate drips and a heart-shaped bow. She has a shy, blushing expression, hands clasped near her chest. The background is plain white, highlighting her adorable, detailed attire. The art style is clean and colorful, with a soft, pastel color palette, evoking a sweet and innocent mood."
+    # - "You are an assistant designed to generate high-quality images with the highest degree of image-text alignment based on textual prompts. <Prompt Start> A close-up shot of left_heavy, a middle-aged Black man with a short beard, wearing a white and gray spacesuit with patches and a large helmet with a transparent visor, looking to the right, and with a neutral expression, sitting and facing towards the right. The background is dark with blurred elements, including some indistinct green lights."
+    # - "You are an assistant designed to generate high-quality images with the highest degree of image-text alignment based on textual prompts. <Prompt Start> A medium shot of a middle-aged white man, left_heavy, with short dark curly hair, wearing glasses, a white collared shirt, and a black tie and a dark watch, has his hand on his forehead and is looking down at a paper he is holding in his other hand. He appears to be focused and somewhat concerned. The background shows an office space with window blinds, a desk with papers, pens and a computer and a view of a city outside."
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> This digital anime-style artwork depicts a humanoid snake-woman with pale skin and long, flowing white hair. She has red eyes, elf-like ears, and a slender, muscular physique with large breasts. She wears a futuristic, black and gold armored suit that accentuates her curves. Her lower body transitions into a snake tail with scales. The background is plain white, making her the focal point. The art style is detailed and polished, typical of high-quality digital illustrations."
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> 1girl, abpart, solo, long hair, blonde hair, hair ornament, very long hair, underwear, panties, swimsuit, ass, thighs, outdoors, bikini, sweat, sky, day, artist name, nail polish, from behind, water, blurry, blue sky, wet, sparkle, blurry background, skindentation, ocean, thick thighs, beach, thigh gap, sunlight, close-up, blue nails, wide hips, low-tied long hair, thong, light rays, ass focus, adjusting clothes, purple bikini, purple panties, aqua nails, sunbeam, bikini bottom only, thong bikini, wedgie, lower body, adjusting swimsuit, questionable"
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> pussy, white background, 1girl, solo focus, animal ears, hood, red_eyes, hooded_jacket, parted lips, thigh, suggestive, black_jacket, looking at viewer, sitting, kemonomimi, pov, collar, breasts, medium breasts, simple background, animal hood, black leotard, leotard, animal ear hood, nipples, paw gloves, 1boys, jacket, blush, hood up, navel, paw print, blonde hair, original, black gloves, short hair, gloves, long sleeves, collarbone, paw print gloves, hetero, pov_hands, black leotard under clothes, bangs, pov eye contact, eyebrows visible through hair"
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> This is a digital anime-style illustration featuring a voluptuous, red-haired female centaur with large breasts and a curvy physique. She wears a black futuristic bodysuit with gold accents and has a mechanical arm. The background is a vibrant, fiery red with swirling flames, adding intensity. The centaur's expression is fierce and determined. The art style is dynamic and detailed, with bold lines and vivid colors."
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> tail, virtual youtuber, black panties, very long hair, standing, cat pose, female solo, animal ears, long_hair, navel, hair between eyes, 1girl, simple background, blushing, horns, bare shoulders, black nails, white background, collar, cat_tail, hair between breasts, black choker, twintails, looking at viewer, sfw, collarbone, black hair, black bikini, fang, pov eye contact, :d, nail polish, open mouth, smile, white hair, bikini, choker, bangs, eyebrows visible through hair, orange eyes, swimsuit, bare arms, small breasts, breasts, :3, bare legs, animal hands, cat_hands, bikini top, hololive, hololive_english, bikini bottom, english text, bikini top removed"
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> best quality, 1girl, solo, loli, cat girl, silver hair ,blue eyes, flat chest, solo, beautiful detailed background, messy hair, long hair"
+    # - "The image is a piece of digital fanart depicting Usada Pekora, a Hololive VTuber, in a suggestive pose.  She's kneeling on a plain white background, her body angled slightly towards the viewer. Pekora is wearing a black, strapless leotard with a low-cut neckline, showcasing her small breasts and cleavage. The leotard has a fur trim around the collar and rabbit-ear details.  She also wears black gloves with fur cuffs and sheer black pantyhose. Her light blue hair is styled in short twintails with blue ribbons, and she has rabbit ears atop her head. Her orange eyes are wide, and she has a slight blush on her cheeks; her mouth is slightly open in a seemingly surprised expression. The overall style is anime-influenced, with a soft shading technique and some slight blurriness around the edges, giving it low to medium level aesthetic appeal. The artist's skill seems fairly high, but it's not masterclass-level, more in the range of solid professional digital artwork. The camera angle is slightly elevated, looking down at Pekora. The focus is sharp on her, with the background being softly blurred, creating shallow depth of field.", "individual_parts": "1. **Usada Pekora:** The central figure, a Hololive VTuber, taking up most of the image.\n2. **Black Leotard:** Strapless, low-cut, revealing cleavage and small breasts; fur trim along the neckline.\n3. **Black Gloves:** Fur-trimmed cuffs.\n4. **Sheer Black Pantyhose:** Covering her legs.\n5. **Light Blue Hair:** Short twintails, tied with blue ribbons.\n6. **Rabbit Ears:** White fur headband with floppy rabbit ears.\n7. **Orange Eyes:** Striking feature of the character.\n8. **Slight Blush:** On cheeks, implying shyness/surprise.\n9. **Slightly Open Mouth:** Suggestive; part of surprised expression.\n10. **Rabbit Tail:** Protrudes from the back of her leotard.\n11. **White Background:** Plain, simple, uncluttered.\n12. **Kneeling Pose:** Suggestive, showcasing body.\n13. **Arm Position:** One arm raised to adjust hair, the other resting on the floor.\n14. **Cleavage:** Prominently displayed.\n15. **Small Breasts:** Partially visible.\n16. **Ribbon:** Blue ribbon in hair.\n17. **Slight Blur:** Around edges of image, creating a soft focus effect.\n18. **Shallow Depth of Field:** Focus mainly on Pekora"
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> This is a high-quality digital drawing of a male anime character with dark, tousled hair, and large, curved, red-tipped horns. He wears a dark military-style jacket with epaulettes and a white shirt. His eyes are a striking purple, and he holds a knife. The background is blurred with warm tones, suggesting a sunset or cityscape. The lighting is soft, enhancing the character's melancholic expression. The depth of field is shallow, focusing sharply on the character."
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> A digital anime-style drawing features a chibi character with purple hair and large, expressive eyes peeking out from under a dark, crescent moon-adorned hat. The character's expression is playful, and they rest their chin on their hands. A green exclamation mark and a green dot float near the character, adding a whimsical touch. The background is plain white, emphasizing the character. The art uses vibrant colors with a soft, pastel-like shading style, creating a cute and cheerful atmosphere. The character is centered, with no additional objects or detailed background elements, focusing attention entirely on the character's endearing pose and expression."
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> 2girls, multiple girls, quanxi (chainsaw man), makima (chainsaw man), 2 blankk, long hair, looking at viewer, smile, simple background, shirt, long sleeves, white background, closed mouth, jacket, white shirt, yellow eyes, white hair, braid, ponytail, red hair, collared shirt, pants, medium hair, grey background, looking at another, black eyes, yuri, hug, black pants, expressionless, eyepatch, formal, suit, light smile, couple, black coat, braided ponytail, ringed eyes, office lady, black suit, business suit, arms around neck, hand on another's back, arm around neck, high-waist pants, hand on another's ass, hand on another's neck, sensitive, masterpieces"
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> This digital anime-style artwork features a young woman with long, straight, reddish-brown hair and yellow eyes, wearing a black sailor school uniform. She holds a brown leather strap in her hands, her expression is neutral. The background is a simple gradient from light to dark gray. The image uses a muted color palette with soft shading, emphasizing the character's figure and the texture of her uniform."
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> a cat fighting with a dog"
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> This is a digital anime-style illustration depicting a young girl with cat ears and a tail, sleeping peacefully on a large, plush, light pink pillow. She has long, flowing white hair with a few strands tied into small buns, and her large, expressive teal eyes are closed. Her outfit consists of a light blue, long-sleeved nightgown with white fur trim around the cuffs and hem, and she is clutching a small, white plush cat toy in her arms. The background features a soft, pastel color palette with a light, fluffy texture, enhancing the cozy, serene atmosphere. The overall mood is tranquil and comforting, with a focus on the character's peaceful slumber. The artist's signature, 'Ari', is visible in the bottom right corner."
+    - "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> A vibrant anime-style digital illustration depicts a cute blonde girl with long, wavy hair and blue eyes, wearing a frilly, pink and white maid outfit adorned with chocolate drips and a heart-shaped bow. She has a shy, blushing expression, hands clasped near her chest. The background is plain white, highlighting her adorable, detailed attire. The art style is clean and colorful, with a soft, pastel color palette, evoking a sweet and innocent mood."
 

@@ -3,6 +3,40 @@ from lightning.fabric.strategies import DeepSpeedStrategy
 
 
 
+ds1 = DeepSpeedStrategy(accelerator=None, 
+                        zero_optimization=True, 
+                        stage=2, 
+                        remote_device=None, 
+                        offload_optimizer=False, 
+                        offload_parameters=False, 
+                        offload_params_device='cpu', 
+                        nvme_path='/local_nvme',
+                        params_buffer_count=5, 
+                        params_buffer_size=100000000, 
+                        max_in_cpu=1000000000, 
+                        offload_optimizer_device='cpu', 
+                        optimizer_buffer_count=4, 
+                        block_size=1048576, 
+                        queue_depth=8, 
+                        single_submit=False, 
+                        overlap_events=True, 
+                        thread_count=1, 
+                        pin_memory=False, 
+                        sub_group_size=1000000000000, 
+                        contiguous_gradients=True, 
+                        overlap_comm=True, 
+                        allgather_partitions=True, 
+                        reduce_scatter=True, 
+                        allgather_bucket_size=200000000, 
+                        reduce_bucket_size=200000000, 
+                        zero_allow_untested_optimizer=True, 
+                        logging_batch_size_per_gpu=None, 
+                        config=None, 
+                        logging_level=30, 
+                        parallel_devices=None, 
+                        cluster_environment=None, 
+                        loss_scale=0, initial_scale_power=16, loss_scale_window=1000, hysteresis=2, min_loss_scale=1, partition_activations=False, cpu_checkpointing=False, contiguous_memory_optimization=False, synchronize_checkpoint_boundary=False, load_full_weights=False, precision=None, process_group_backend=None)
+
 ds_strategy = DeepSpeedStrategy(
     stage=3,
     config={
@@ -322,3 +356,47 @@ sdxl_ds_strategy2 = DeepSpeedStrategy(
 
 def _sdxl_strategy2():
     return sdxl_ds_strategy2
+
+fast_ds_strategy = DeepSpeedStrategy(
+    stage=2,  # ZeRO-2 通常比ZeRO-3提供更好的训练速度
+    config={
+        "bf16": {
+            "enabled": True  # 使用bfloat16以获得更好的数值稳定性
+        },
+        "zero_optimization": {
+            "stage": 2,
+            "overlap_comm": True,  # 开启通信和计算重叠
+            "contiguous_gradients": True,
+            "reduce_bucket_size": 2e8,  # 较小的bucket size可以提高并行效率
+            "allgather_bucket_size": 2e8,
+            "reduce_scatter": True,
+            "round_robin_gradients": True,
+            "ignore_unused_parameters": True
+        },
+        "gradient_clipping": 2.0,
+        "train_batch_size": 32,
+        "train_micro_batch_size_per_gpu": 4,
+        "gradient_accumulation_steps": 1,
+        "steps_per_print": 100,
+        "wall_clock_breakdown": False,
+        "zero_allow_untested_optimizer": True,
+        "communication_data_type": "bf16",
+        "distributed": {
+            "init_method": "env://",
+            "nccl": {
+                "debug": 0,  # 关闭debug以提高性能
+                "ib_timeout": 23
+            }
+        },
+        "aio": {
+            "block_size": 1048576,
+            "queue_depth": 8,
+            "thread_count": 4,  # 增加线程数提高I/O性能
+            "single_submit": False,
+            "overlap_events": True
+        }
+    }
+)
+
+def _fast_strategy():
+    return fast_ds_strategy

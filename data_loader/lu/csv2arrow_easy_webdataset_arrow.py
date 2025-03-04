@@ -35,7 +35,7 @@ def parse_data(data):
                 json_data = json.load(fp)  # 读取整个JSON内容
         else:
             print(f"No corresponding JSON file found for {img_path}")
-            json_data = {}
+            return
         
             
         # 返回提取的信息
@@ -110,7 +110,7 @@ if __name__ == '__main__':
     pool = Pool(6)
     
 
-    make_arrow_from_dir("/data/soso/tpony_gen_sample", "/data/data_arrow/tpony_arrow")
+    make_arrow_from_dir("/nieta/soso/New_Folder/danbooru_images_filtered_", "/nieta/data_arrow/danbooru_images_filtered_arrow")
 
     # if len(sys.argv) != 4:
     #     print("Usage: python hydit/data_loader/csv2arrow.py ${csv_root} ${output_arrow_data_path} ${pool_num}")

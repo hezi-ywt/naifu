@@ -135,11 +135,6 @@ class Lumina2Model(pl.LightningModule):
             else:
                 logger.warning(f"Checkpoint not found at: {checkpoint_path}")
 
-        # Note that parameter initialization is done within the DiT constructor
-        if self.config.advanced.get("use_ema", True):
-            logger.info("Using EMA")
-            self.model_ema = deepcopy(self.model)
-            self.model_ema.requires_grad_(False)  # EMA 模型不需要梯度
             
         if self.config.model.get("resume", None) is not None:
             logger.info(f"Resuming model weights from: {self.config.model.resume}")
@@ -153,7 +148,11 @@ class Lumina2Model(pl.LightningModule):
                 ),
                 strict=True,
             )
-            
+             # Note that parameter initialization is done within the DiT constructor
+            if self.config.advanced.get("use_ema", True):
+                logger.info("Using EMA")
+                self.model_ema = deepcopy(self.model)
+                
             if hasattr(self, "model_ema") and os.path.exists(os.path.join(self.config.model.resume, "consolidated_ema.00-of-01.pth")):
                 logger.info(f"Resuming ema weights from: {self.config.model.resume}")
                 self.model_ema.load_state_dict(
@@ -166,6 +165,7 @@ class Lumina2Model(pl.LightningModule):
                     ),
                     strict=True,
                 )
+            self.model_ema.requires_grad_(False)  # EMA 模型不需要梯度    
         elif self.config.model.get("init_from", None) is not None:
             
             logger.info(f"Initializing model weights from: {self.config.model.init_from}")
@@ -286,80 +286,32 @@ class Lumina2Model(pl.LightningModule):
                 # take a random caption if there are multiple
                 captions.append(random.choice(caption) if is_train else caption[0])
 
-        with torch.no_grad():
-            text_inputs = tokenizer(
-                captions,
-                padding=True,
-                pad_to_multiple_of=8,
-                max_length=256,
-                truncation=True,
-                return_tensors="pt",
-            )
+        
+        text_inputs = tokenizer(
+            captions,
+            padding=True,
+            pad_to_multiple_of=8,
+            max_length=256,
+            truncation=True,
+            return_tensors="pt",
+        )
 
-            # 将输入移动到正确的设备并设置数据类型
-            text_input_ids = text_inputs.input_ids.to(self.target_device)
-            prompt_masks = text_inputs.attention_mask.to(self.target_device)
+        # 将输入移动到正确的设备并设置数据类型
+        text_input_ids = text_inputs.input_ids.to(self.target_device)
+        prompt_masks = text_inputs.attention_mask.to(self.target_device)
 
-            prompt_embeds = text_encoder(
-                input_ids=text_input_ids,
-                attention_mask=prompt_masks,
-                output_hidden_states=True,
-            ).hidden_states[-2]
+        prompt_embeds = text_encoder(
+            input_ids=text_input_ids,
+            attention_mask=prompt_masks,
+            output_hidden_states=True,
+        ).hidden_states[-2]
 
-            # 确保 prompt_embeds 的类型与 x_embedder 的 Linear 层匹配
-            prompt_embeds = prompt_embeds.to(dtype=self.model.x_embedder.weight.dtype)
+        # 确保 prompt_embeds 的类型与 x_embedder 的 Linear 层匹配
+        prompt_embeds = prompt_embeds.to(dtype=self.model.x_embedder.weight.dtype)
 
         return prompt_embeds, prompt_masks
 
-    # def training_step(self, batch, batch_idx):
-    #     # 获取输入数据
-    #     # loss = torch.tensor(0.0, device=self.target_device)
-    #     for train_res in self.config.advanced.get("train_res", [1024]):
-    #         trans = create_transport(
-    #             "Linear",
-    #             "velocity",
-    #             None,
-    #             None,
-    #             None,
-    #             snr_type=self.config.advanced.snr_type,
-    #             do_shift=not self.config.advanced.no_shift,
-    #             seq_len=(train_res // 16) ** 2,
-    #         )
-    #         images = batch["image"].to(self.target_device)
-    #         prompts = batch["prompt"]
-            
-    #         with torch.no_grad():
-    #             cap_feats, cap_mask = self.encode_prompt(prompts, self.text_encoder, self.tokenizer, 0.1)
-
-    #             # 对图像进行VAE编码
-    #             latents = self.encode_images(images)  # [B, C, H, W]
-            
-    #             # 编码文本提示
-    #             prompt_embeds, prompt_masks = self.encode_prompt(
-    #                 prompts, 
-    #                 self.text_encoder,
-    #                 self.tokenizer,
-    #                 proportion_empty_prompts=0.1
-    #             )
-    #             ### muti resolution
-    #             # 确保 latents 是 4D 张量 [B, C, H, W]
-    #             if len(latents.shape) == 3:
-    #                 latents = latents.unsqueeze(0)
-    #             latents_mb_256 = self.apply_average_pool(latents, 4)  # 直接对整个批次应用下采样
-
-    #         model_kwargs = dict(cap_feats=prompt_embeds, cap_mask=prompt_masks)
-    #         loss_dict = trans.training_losses(self.model, latents, model_kwargs)
-    #         loss_dict_256 = trans.training_losses(self.model, latents_mb_256, model_kwargs)
-
-    #         loss_1024 = loss_dict["loss"].sum() / self.batch_size
-    #         loss_256 = loss_dict_256["loss"].sum() / self.batch_size
-    #         loss = loss_1024 + loss_256
-
-    #         # 记录训练损失
-    #         self.log("train_loss", loss, prog_bar=True)
-            
-    #         return loss
-
+    @torch.no_grad()
     def encode_images(self, images):
         # VAE编码图像
         vae_scale = {
@@ -378,93 +330,17 @@ class Lumina2Model(pl.LightningModule):
             "cogvideox": 0.0,
             "flux": 0.1159,
         }["flux"]
-        latents = []
         
-        # logger.info(f"Input images shape: {images.shape}")
-        for i in range(0, images.shape[0], self.vae_encode_bsz):
-            batch_latent = self.vae.encode(
-                images[i:i + self.vae_encode_bsz].to(self.vae.dtype)
-            ).latent_dist.mode()
-            # logger.info(f"Batch latent shape after VAE: {batch_latent.shape}")
-            latents.append(
-                (batch_latent - vae_shift) * vae_scale
-            )
-        # logger.info(f"latents len: {len(latents)}")
-        # 只有在真正需要连接时才使用cat
-        if len(latents) == 1:
-            latents = latents[0].to(dtype=self.model.x_embedder.weight.dtype)
-        else:
-            latents = torch.cat(latents, dim=0).to(dtype=self.model.x_embedder.weight.dtype)
+        x = [img.to(self.target_device, non_blocking=True) for img in images]
+   
+
+        for i, img in enumerate(x):
+            x[i] = (self.vae.encode(img[None].bfloat16()).latent_dist.mode()[0] - vae_shift) * vae_scale
+            x[i] = x[i].float()
+
+        return x
         
-        # logger.info(f"Final latents shape: {latents.shape}")
-        return latents
-
-    # def configure_optimizers(self):
-    #     # 配置优化器
-    #     optimizer = torch.optim.AdamW(
-    #         self.model.parameters(),
-    #         lr=self.config.optimizer.params.lr,
-    #         weight_decay=self.config.optimizer.params.weight_decay,
-    #         betas=(0.9, 0.999),
-    #         eps=1e-8,
-    #     )
-
-    #     if self.config.trainer.get("resume", None) is not None:
-    #         # 使用 Lightning 的方式获取 world_size
-    #         world_size = self.trainer.world_size
-    #         local_rank = self.trainer.local_rank
-            
-    #         opt_state_world_size = len(
-    #             [x for x in os.listdir(self.config.trainer.resume) if x.startswith("optimizer.") and x.endswith(".pth")]
-    #         )
-    #         assert opt_state_world_size == world_size, (
-    #             f"Resuming from a checkpoint with unmatched world size "
-    #             f"({world_size} vs. {opt_state_world_size}) "
-    #             f"is currently not supported."
-    #         )
-    #         logger.info(f"Resuming optimizer states from: {self.config.trainer.resume}")
-    #         optimizer.load_state_dict(
-    #             torch.load(
-    #                 os.path.join(
-    #                     self.config.trainer.resume,
-    #                     f"optimizer.{local_rank:05d}-of-{world_size:05d}.pth",
-    #                 ),
-    #                 map_location="cpu",
-    #             )
-    #         )
-    #         for param_group in optimizer.param_groups:
-    #             param_group["lr"] = self.config.optimizer.params.lr
-    #             param_group["weight_decay"] = self.config.optimizer.params.weight_decay
-
-    #         with open(os.path.join(self.config.trainer.resume, "resume_step.txt")) as f:
-    #             resume_step = int(f.read().strip())
-    #     else:
-    #         resume_step = 0
-
-    #     # 配置学习率调度器
-    #     if self.config.get("scheduler", None):
-    #         scheduler_cls = get_class(self.config.scheduler.name)
-    #         scheduler = scheduler_cls(
-    #             optimizer,
-    #             **self.config.scheduler.params
-    #         )
-            
-    #         # 返回格式应该是 (list[optimizer], list[scheduler_config])
-    #         return ([optimizer], [{
-    #             "scheduler": scheduler,
-    #             "interval": "step"
-    #         }])
-    #         # return [optimizer], [lr_scheduler]
-    #         # return {
-    #         #     "optimizer": optimizer,
-    #         #     "lr_scheduler": {
-    #         #         "scheduler": scheduler,
-    #         #         "interval": "step"
-    #         #     }
-    #         # }
         
-    #     # 如果没有调度器，只返回优化器
-    #     return optimizer
 
     def on_train_batch_end(self, outputs, batch, batch_idx):
         # 更新EMA模型
@@ -655,7 +531,7 @@ class Lumina2Model(pl.LightningModule):
     ):
         """使用Lumina2模型生成图像样本"""
         system_prompt = "You are an assistant designed to generate anime images with the highest degree of image-text alignment based on textual prompts. <Prompt Start>  "
-
+        system_prompt = ""
         try:
             # 切换到评估模式并标记 forward_with_cfg
             self.model.eval()
@@ -724,7 +600,7 @@ class Lumina2Model(pl.LightningModule):
                     )
                     sampler = Sampler(transport)
                     sample_fn = sampler.sample_dpm(
-                        self.model.forward_with_cfg,
+                        self.model_ema.ard_with_cfg,
                         model_kwargs=model_kwargs,
                     )
                     samples = sample_fn(
@@ -800,37 +676,3 @@ class Lumina2Model(pl.LightningModule):
             # 恢复训练模式
             self.model.train()
             self.vae.train()
-
-    # def setup(self, fabric, *args, **kwargs):
-    #     """在模型被Fabric包装后调用此方法"""
-    #     # 初始化噪声调度器
-    #     self.init_noise_scheduler()
-        
-    #     # 标记 forward 为默认前向方法
-    #     if hasattr(self.model, "mark_forward_method"):
-    #         self.model.mark_forward_method("forward")
-    #     elif hasattr(self.model, "_forward_module") and hasattr(self.model._forward_module, "mark_forward_method"):
-    #         self.model._forward_module.mark_forward_method("forward")
-
-    def init_noise_scheduler(self):
-        """初始化噪声调度器"""
-        self.noise_scheduler = DDPMScheduler(
-            beta_start=0.00085,
-            beta_end=0.012,
-            beta_schedule="scaled_linear",
-            num_train_timesteps=1000,
-            clip_sample=False,
-        )
-
-        # allow custom noise scheduler
-        if self.config.get("noise_scheduler"):
-            scheduler_cls = get_class(self.config.noise_scheduler.name)
-            self.noise_scheduler = scheduler_cls(**self.config.noise_scheduler.params)
-
-        # 处理 zero_terminal_snr
-        advanced = self.config.get("advanced", {})
-        if advanced.get("zero_terminal_snr", False):
-            apply_zero_terminal_snr(self.noise_scheduler)
-
-        if hasattr(self.noise_scheduler, "alphas_cumprod"):
-            cache_snr_values(self.noise_scheduler, self.target_device)

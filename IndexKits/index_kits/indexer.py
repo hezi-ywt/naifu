@@ -442,7 +442,17 @@ class ArrowIndexV2(object):
             #    inconsistency in following processing.
             # 2. Convert the image to RGB mode. Some images are in P mode, which will be forced to use NEAREST resample
             #    method in resize (even if you specify LANCZOS), which will cause blurry images.
-            pil_image = Image.open(image_bytes).convert("RGB")
+            
+            pil_image = Image.open(image_bytes)
+            
+            if pil_image.mode.upper() == "RGBA":
+                rgb_img = Image.new("RGB", pil_image.size, (255, 255, 255))
+                rgb_img.paste(pil_image, mask=pil_image.split()[3])  # 3 is the alpha channel
+                pil_image = rgb_img
+            elif pil_image.mode.upper() == "P":
+                pil_image = pil_image.convert('RGB')
+            else:
+                pil_image = pil_image.convert('RGB')
         except Exception as e:
             print(f'get_image_by_index | Error: {e} ({self.get_arrow_file_by_index(index), index - index_bias})')
             pil_image = Image.new("RGB", (256, 256), (255, 255, 255))

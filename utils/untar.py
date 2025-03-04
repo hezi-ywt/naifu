@@ -56,5 +56,10 @@ def is_tar_file(file_path: Union[str, Path]) -> bool:
 
 
 if __name__ == "__main__":
-    extract_tar("/data/soso/ai_gen_sample.tar", "/data/soso/tpony_gen_sample")
-
+    # extract_tar("/data/soso/ai_gen_sample.tar", "/data/soso/tpony_gen_sample")
+    dir = "/nieta/soso/danbooru_pose_and_nsfw"
+    output_dir = "/nieta/soso/danbooru_pose_and_nsfw_json_packed_untar"
+    for file in os.listdir(dir):
+        if file.endswith(".tar"):
+            print(file)
+            extract_tar(os.path.join(dir, file),output_dir)

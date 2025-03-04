@@ -1,2 +1,11 @@
 source:
-- /nieta/data_arrow/tpony_arrow/*.arrow
+  - /nieta/data_arrow/tpony_arrow/*.arrow:
+    repeat: 1
+  - /nieta/data_arrow/danbooru_images_hy_artist_json_packed_untar_arrow/*.arrow:
+    repeat: 3
+  - /nieta/data_arrow/danbooru_images_filtered_arrow/*.arrow:
+    repeat: 1
+  - /nieta/data_arrow/shiertier_arrow/*.arrow:
+    repeat: 3
+
+

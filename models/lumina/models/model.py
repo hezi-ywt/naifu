@@ -171,7 +171,7 @@ class JointAttention(nn.Module):
             Tuple[torch.Tensor, torch.Tensor]: Tuple of modified query tensor
                 and key tensor with rotary embeddings.
         """
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.amp.autocast('cuda'):
             x = torch.view_as_complex(x_in.float().reshape(*x_in.shape[:-1], -1, 2))
             freqs_cis = freqs_cis.unsqueeze(2)
             x_out = torch.view_as_real(x * freqs_cis).flatten(3)
