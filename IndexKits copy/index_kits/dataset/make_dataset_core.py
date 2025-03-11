@@ -13,9 +13,9 @@ import pyarrow as pa
 from tqdm import tqdm
 
 from index_kits.indexer import IndexV2Builder
-from index_kits.bucket import build_multi_resolution_bucket
+from index_kits.bucket_old import build_multi_resolution_bucket
 from index_kits.dataset.config_parse import DatasetConfig
-
+from index_kits.bucket import build_multi_base_resolution_bucket
 
 def get_table(arrow_file):
     return pa.ipc.RecordBatchFileReader(pa.memory_map(arrow_file, 'r')).read_all()
@@ -320,3 +320,66 @@ def make_multireso(target,
     )
 
 
+def make_multibase(target, config_file=None, src_index_files=None, base_sizes=None, reso_step=None,
+                   target_ratios=None, align=16, min_size=0, md5_file=None):
+    """
+    构建支持多个base size的多分辨率桶索引
+    
+    Parameters
+    ----------
+    target: str
+        保存路径
+    config_file: str
+        配置文件路径，yaml格式
+    src_index_files: list
+        源索引文件
+    base_sizes: list
+        多个基础尺寸，如[512, 768, 1024]
+    reso_step: int
+        分辨率步长
+    target_ratios: list
+        目标比例
+    align: int
+        对齐大小
+    min_size: int
+        最小尺寸，小于此尺寸的图像将被忽略
+    md5_file: str
+        MD5到高宽的映射文件
+    """
+    # from ..bucket import build_multi_base_resolution_bucket
+    
+    if config_file is not None:
+        import yaml
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        src_index_files = config.get('src_index_files')
+        base_sizes = config.get('base_sizes')
+        reso_step = config.get('reso_step')
+        target_ratios = config.get('target_ratios')
+        align = config.get('align', 16)
+        min_size = config.get('min_size', 0)
+        md5_file = config.get('md5_file')
+    
+    assert src_index_files is not None, "源索引文件不能为空"
+    assert base_sizes is not None, "基础尺寸不能为空"
+    assert reso_step is not None or target_ratios is not None, "reso_step和target_ratios至少提供一个"
+    
+    if md5_file is not None:
+        import pickle
+        with open(md5_file, 'rb') as f:
+            md5_hw = pickle.load(f)
+    else:
+        md5_hw = None
+    
+    build_multi_base_resolution_bucket(
+        config_file=config_file,
+        base_sizes=base_sizes,
+        src_index_files=src_index_files,
+        save_file=target,
+        reso_step=reso_step,
+        target_ratios=target_ratios,
+        align=align,
+        min_size=min_size,
+        md5_hw=md5_hw,
+    )

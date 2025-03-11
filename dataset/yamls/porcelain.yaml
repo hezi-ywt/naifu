@@ -1,11 +1,28 @@
 source:
-  - /nieta/data_arrow/tpony_arrow/*.arrow:
-    repeat: 1
-  - /nieta/data_arrow/danbooru_images_hy_artist_json_packed_untar_arrow/*.arrow:
-    repeat: 3
-  - /nieta/data_arrow/danbooru_images_filtered_arrow/*.arrow:
-    repeat: 1
-  - /nieta/data_arrow/shiertier_arrow/*.arrow:
-    repeat: 3
+    - /nieta/data_arrow/tpony_arrow/*.arrow:
+        repeat: 1
+    - /nieta/data_arrow/danbooru_images_hy_artist_json_packed_untar_arrow1/*.arrow:
+        repeat: 2
+    - /nieta/data_arrow/danbooru_images_filtered_arrow1/*.arrow:
+        repeat: 1
+    - /nieta/data_arrow/shiertier_arrow/*.arrow:
+        repeat: 1
+    - /nieta/data_arrow/shiertier_filtered_arrow/*.arrow:
+        repeat: 2
+    - /nieta/data_arrow/乙女美男_v1_untar_arrow/*.arrow:
+        repeat: 1
+    - /nieta/data_arrow/古风v1_untar_arrow/*.arrow:
+        repeat: 1
+    - /nieta/data_arrow/古风v2_untar_arrow/*.arrow:
+        repeat: 1
+    - /nieta/data_arrow/古风场景_untar_arrow/*.arrow:
+        repeat: 1
+    - /nieta/data_arrow/半身刻画脸_untar_arrow/*.arrow:
+        repeat: 1
+    - /nieta/data_arrow/wlop大神鬼刀_4k_filtered_webp_untar_arrow/*.arrow:
+        repeat: 2
+
+
+
 
 

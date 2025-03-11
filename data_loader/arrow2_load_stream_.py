@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from torchvision.transforms import functional as TF
 from torch.utils.data import Dataset
 
-from IndexKits.index_kits import ArrowIndexV2, MultiResolutionBucketIndexV2, MultiIndexV2, MultiBaseResolutionBucketIndexV2
+from IndexKits.index_kits import ArrowIndexV2, MultiResolutionBucketIndexV2, MultiIndexV2
 
 
 class TextImageArrowStream(Dataset):
@@ -87,28 +87,18 @@ class TextImageArrowStream(Dataset):
         self.log_fn(f"Image_transforms: {self.flip_norm}")
 
     def load_index(self):
-        self.log_fn("开始加载索引...")
         multireso = self.multireso
         index_file = self.index_file
         batch_size = self.batch_size
         world_size = self.world_size
 
         if multireso:
-            self.log_fn(f"使用多分辨率模式，索引文件：{index_file}")
             if isinstance(index_file, (list, tuple)):
                 if len(index_file) > 1:
                     raise ValueError(f"When enabling multireso, index_file should be a single file, but got {index_file}")
                 index_file = index_file[0]
-            
-            # 记录每个步骤
-            self.log_fn("开始初始化 MultiBaseResolutionBucketIndexV2...")
-            index_manager = MultiBaseResolutionBucketIndexV2(index_file, batch_size, world_size)
-            self.log_fn(f"索引加载完成: {len(index_manager):,} 样本")
-            
-            # 输出桶信息
-            bucket_info = [f"桶 {i}: {len(b)} 样本, 大小 {b.width}x{b.height}" 
-                          for i, b in enumerate(index_manager.buckets[:5])]
-            self.log_fn(f"前5个桶信息: {bucket_info} ...")
+            index_manager = MultiResolutionBucketIndexV2(index_file, batch_size, world_size)
+            self.log_fn(f"Using MultiResolutionBucketIndexV2: {len(index_manager):,}")
         else:
             if isinstance(index_file, str):
                 index_file = [index_file]
@@ -167,6 +157,7 @@ class TextImageArrowStream(Dataset):
 
         if self.multireso:
             target_size = self.index_manager.get_target_size(index)
+            
             image, crops_coords_top_left = self.index_manager.resize_and_crop(
                 image, target_size, resample=Image.LANCZOS, crop_type='random')
             image_tensor = self.flip_norm(image)
@@ -199,11 +190,12 @@ class TextImageArrowStream(Dataset):
 
     def formate_tag(self, tag_list):
         tag_new = []
-        tag = tag.strip()
-        if len(tag) > 3:
-            tag = tag.replace("_", " ")
+        for tag in tag_list:
+            tag = tag.strip()
+            if len(tag) > 3:
+                tag = tag.replace("_", " ")
         
-        tag_new.append(tag)
+            tag_new.append(tag)
         return tag_new
 
     def danbooru_meta_to_text(self, danbooru_meta):
@@ -238,14 +230,103 @@ class TextImageArrowStream(Dataset):
 
         if len(artist_list) > 0:
             if "type" == "danbooru_meta":
-                system_prompt = f"You are an artist named {', '.join(artist_list)}, you need to create works in your own style with the highest degree of image-text alignment based on danbooru tags, the danbooru tag may include the character, the artist style, the action, etc. <Prompt Start>  "
+                system_prompt = f"You are an artist named @{', '.join(artist_list)}, you need to create works in your own style with the highest degree of image-text alignment based on danbooru tags, the danbooru tag may include the character, the artist style, the action, etc. <Prompt Start>  "
             elif "type" == "text":
-                system_prompt = f"You are an artist named {', '.join(artist_list)}, you need to create works in your own style based on textual prompts. <Prompt Start>  ",
+                system_prompt = f"You are an artist named @{', '.join(artist_list)}, you need to create works in your own style based on textual prompts. <Prompt Start>  ",
         else:
             system_prompt = self.system_prompt[type]
             
         return system_prompt
+    
+    def add_character_artist(self, character_list, artist_list, user_prompt):
+ 
+        if len(character_list) > 0:
+            character_list = [f"#{character}" for character in character_list if character != "" and character != " "]
+            random.shuffle(character_list)
+        else:
+            character_list = None
+            
+        if len(artist_list) > 0:
 
+            artist_list = [f"@{artist}" for artist in artist_list if artist != ""]
+            random.shuffle(artist_list)
+        else:
+            artist_list = None
+            
+        add = ""
+
+        if character_list is not None:
+            if len(character_list) > 0 :
+                character_list = ", ".join(character_list)
+
+                '''
+                有角色名的情况
+                - Characters: #{character_name1}, #{character_name2}.
+                - Cast: #{character_name1}, #{character_name2}.
+                - The characters in this work including #{character_name1}, #{character_name2}.
+                '''
+                type_list = [
+                    f"Characters: {character_list}.",
+                    f"Cast: {character_list}.",
+                    f"The characters in this work including {character_list}.",
+                    f"{character_list}",
+                ]
+                add = add + random.choice(type_list)
+            
+        if artist_list is not None:
+            '''
+            有画师名的情况
+            - Drawn by @{artist_name}.
+            - Painted by @{artist_name}.
+            - Created by @{artist_name}.
+            - Artist: @{artist_name}.
+            - A vision of @{artist_name}.
+            - This work is attributed to @{artist_name}.
+            - Art Credit: @{artist_name}.
+            - by @{artist_name}
+            - Use @{artist_name} style.
+            随机插入在prompt开头或结尾
+            '''
+            if len(artist_list) > 0:
+                artist_list = ",".join(artist_list)
+                type_list = [
+                    f"Drawn by {artist_list}.",
+                    f"Painted by {artist_list}.",
+                    f"Created by {artist_list}.",
+                    f"Artist: {artist_list}.",
+                    f"A vision of {artist_list}.",
+                    f"This work is attributed to {artist_list}.",
+                    f"Use {artist_list} style.",
+                    f"{artist_list}",
+                ]    
+                if add != "":
+                    if random.random() < 0.5:
+                        if random.random() < 0.5:
+                            add = "\n" + add + "\n" + random.choice(type_list)
+                        else:
+                            add = "\n" + random.choice(type_list) + "\n" + add
+                            
+                    else:
+                        if random.random() < 0.5:
+                            add = add + " " + random.choice(type_list)
+                        else:
+                            add = random.choice(type_list) + " " + add
+                else:
+                    add = add + random.choice(type_list)
+                        
+        if add != "":
+            if random.random() < 0.5:
+                if random.random() < 0.5:
+                    user_prompt = add + "\n" + user_prompt
+                else:
+                    user_prompt = user_prompt + " " + add
+            else:
+                if random.random() < 0.5:
+                    user_prompt = user_prompt + " " + add
+                else:
+                    user_prompt = add + " " + user_prompt
+        return user_prompt
+    
     def get_original_text(self, ind):
 
         json_data = self.index_manager.get_attribute(ind, 'text_zh')
@@ -253,22 +334,29 @@ class TextImageArrowStream(Dataset):
             json_data = json.loads(json_data)
         caption_dict = {}
         tag_key_list = ['joycaption','regular_summary',
-                        "danboooru_meta","gemini_caption",
+                        'doubao_caption_dict',
+                        "danbooru_meta","gemini_caption",
                         "tags", "tag", "caption", 
                         "doubao", "wd_tagger", 
                         "midjourney_style_summary",
                         "structural_summary",
                         "deviantart_commission_request",
-                        "creation_instructional_summary"
+                        "creation_instructional_summary",
+                        "doubao_caption_dict"
                         ]
+        meta_has = False
         for tag_key in tag_key_list:
             if tag_key in json_data and json_data[tag_key] is not None:
                 if len(json_data[tag_key]) > 0:
 
-                    if tag_key == 'danboooru_meta':
+                    if tag_key == 'danbooru_meta':
                         all_tag_text, character_list, artist_list, series_list, rating_list, quality_list = self.danbooru_meta_to_text(json_data[tag_key])
+                        meta_has = True
                         if isinstance(all_tag_text, str):
-                            caption_dict[tag_key] = [self.system_prompt["danbooru"], all_tag_text, tag_key]
+                            if random.random() < 0.5:
+                                caption_dict[tag_key] = [self.system_prompt["danbooru"], all_tag_text, tag_key]
+                            else:
+                                caption_dict[tag_key] = [self.system_prompt["text"], all_tag_text, tag_key]
                         else:
                             continue
                     if tag_key == 'wd_tagger':
@@ -277,55 +365,118 @@ class TextImageArrowStream(Dataset):
                         else:
                             caption_dict[tag_key] = [self.system_prompt["text"] , json_data[tag_key].replace("|||", ""), tag_key]
                     elif tag_key == 'gemini_caption':
-                        gemini_caption = json_data[tag_key].get("regular_summary",None)
-                        if gemini_caption is not None and len(gemini_caption) > 40:
-                            if isinstance(gemini_caption, str):
+                        gemini_caption = json_data[tag_key]
+                        
+                        if isinstance(gemini_caption, dict):
+                            for sub_tag_key in tag_key_list:
+                                if sub_tag_key in gemini_caption and gemini_caption[sub_tag_key] is not None:
+                                    if len(gemini_caption[sub_tag_key]) > 30:
+                                        key = tag_key + "_" + sub_tag_key
+                                        if tag_key == "regular_summary":
+                                            if random.random() < 0.5:
+                                                caption_dict[key] = [self.system_prompt["caption"] , gemini_caption[sub_tag_key], key]
+                                            else:
+                                                caption_dict[key] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]
+                                        else:
+                                            caption_dict[key] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]
+                        elif isinstance(gemini_caption, str):
+                            if len(gemini_caption) > 30:
                                 caption_dict[tag_key] = [self.system_prompt["text"] , gemini_caption, tag_key]
-                            else:
-                                continue
+                        else:
+                            continue
+                    elif tag_key == 'doubao_caption_dict':
+                        gemini_caption = json_data[tag_key]
+                        if isinstance(gemini_caption, dict):
+                            for sub_tag_key in tag_key_list:
+                                if sub_tag_key in gemini_caption and gemini_caption[sub_tag_key] is not None:
+                                    if len(gemini_caption[sub_tag_key]) > 30:
+                                        key = tag_key + "_" + sub_tag_key
+                                        if tag_key == "regular_summary":
+                                            if random.random() < 0.5:
+                                                caption_dict[key] = [self.system_prompt["caption"] , gemini_caption[sub_tag_key], key]
+                                            else:
+                                                caption_dict[key] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]
+                                        else:
+                                            caption_dict[key] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]
+                        elif isinstance(gemini_caption, str):
+                            if len(gemini_caption) > 30:
+                                caption_dict[tag_key] = [self.system_prompt["text"] , gemini_caption, tag_key]
                         else:
                             continue
                     elif tag_key == 'structural_summary':
                         if isinstance(json_data[tag_key], str):
-                            caption_dict[tag_key] = [self.system_prompt["structural_summary"] , json_data[tag_key], tag_key]
+                            if random.random() < 0.5:
+                                caption_dict[tag_key] = [self.system_prompt["structural_summary"] , json_data[tag_key], tag_key]
+                            else:
+                                caption_dict[tag_key] = [self.system_prompt["text"] , json_data[tag_key], tag_key]
                         else:
                             continue
                     else:
-                        if len(json_data[tag_key]) > 40 and isinstance(json_data[tag_key], str):
+                        if len(json_data[tag_key]) > 20 and isinstance(json_data[tag_key], str):
                             
                             caption_dict[tag_key] = [self.system_prompt["text"] , json_data[tag_key], tag_key]
                         else:
                             continue
-                    
+        if len(caption_dict) == 0:
+            self.log_fn(f"get_original_text | No caption found, use default caption")
+            if random.random() < 0.5:
+                caption_dict["default"] = ['You are an assistant designed to generate anime images based on textual prompts. <Prompt Start>  ', 'Generate a random anime image', 'default']
+            else:
+                caption_dict["default"] = ['', '', 'default']
 
-                        
+                       
         text = random.choice(list(caption_dict.values()))
-        if random.random() < 0.5:
-            try:
-                caption = self.build_system_prompt(text[2],artist_list,series_list,rating_list,quality_list) + text[0] + text[1]
-            except:
+        if random.random() < 0.01:
+            if meta_has:
+                try:
+                    caption = self.build_system_prompt(text[2],artist_list,series_list,rating_list,quality_list) + text[0] + text[1]
+                except:
+                    caption = text[0] + text[1]
+            else:
                 caption = text[0] + text[1]
         else:
-            caption = text[0] + text[1]
+            if random.random() < 0.1:
+                caption = text[0] + text[1]
+            else:
+                if meta_has:
+                    caption = text[0] + self.add_character_artist(character_list, artist_list, text[1])
+                else:
+                    caption = text[0] + text[1]
+        if random.random() < 0.01:
+            
+            print(f"get_original_text | type: {text[2]} | text: {caption}")
 
         return caption
     
-
+    def get_similar_size(self, base_size):
+        #获得差最小的尺寸
+        base_size_list = [1024*1024, 512*512, 768*768, 1280*1280, 1536*1536]
+        min_diff = float('inf')
+        target_size = base_size
+        for size in base_size_list:
+            diff = abs(size - base_size)
+            if diff < min_diff:
+                min_diff = diff
+                target_size = size
+        return target_size
 
 
     def get_text(self, ind):
         if random.random() < 0.001:
-            text = 'Generate a random image'
-        try:
-            text =  self.get_original_text(ind)
-        except:
-            text = 'Generate a random image'
-        if random.random() < 0.1:
-            print(f"get_text | text: {text}")
+            if random.random() < 0.5:
+                text = 'You are an assistant designed to generate anime images based on textual prompts. <Prompt Start>  generate a random image'
+            else:
+                text = ''
+        else:
+            try:
+                text =  self.get_original_text(ind)
+            except:
+                text = 'Generate a random image'
+        # if random.random() < 0.01:
+            
+        #     print(f"get_text | text: {text}")
         return text
-    def get_base_size(self, ind):
-        base_size = self.index_manager.get_attribute(ind, 'base_resolution')
-        return base_size
+
     def __getitem__(self, ind):
         # Get text
         text = self.get_text(ind)
@@ -345,7 +496,6 @@ class TextImageArrowStream(Dataset):
             "prompts": text,
             "pixels": pixel,
             "is_latent": False,
-            "base_size": kwargs["target_size"][0]*kwargs["target_size"][1]
             # "target_size_as_tuple": target_size,
             # "original_size_as_tuple": origin_size,
             # "crop_coords_top_left": crops_coords_top_left,

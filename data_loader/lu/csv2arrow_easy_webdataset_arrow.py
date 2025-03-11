@@ -10,6 +10,31 @@ from tqdm import tqdm
 import hashlib
 from PIL import Image
 
+def check_json_file(json_data):
+    tag_key_list = ['joycaption','regular_summary',
+                        "danbooru_meta","gemini_caption",
+                        "tags", "tag", "caption", 
+                        "doubao", "wd_tagger", 
+                        "midjourney_style_summary",
+                        "structural_summary",
+                        "deviantart_commission_request",
+                        "creation_instructional_summary"
+                        ]
+    for tag_key in tag_key_list:
+        if tag_key in json_data and json_data[tag_key] is not None:
+            
+            if tag_key == "danbooru_meta":
+                # print(f"json_data[tag_key]: {json_data[tag_key]}")
+                if isinstance(json_data[tag_key], dict) and len(json_data[tag_key]) > 5:
+                    # print(f"find danbooru_meta")
+                    return False
+            if tag_key == "gemini_caption":
+                if isinstance(json_data[tag_key], dict) and "regular_summary" in json_data[tag_key]:
+                    if isinstance(json_data[tag_key]["regular_summary"], str) and len(json_data[tag_key]["regular_summary"]) > 20:
+                        return False
+            if isinstance(json_data[tag_key], str) and len(json_data[tag_key]) > 20:
+                return False
+    return True
 
 def parse_data(data):
     try:
@@ -33,13 +58,20 @@ def parse_data(data):
             with open(json_path, "r", encoding='utf-8') as fp:
                 import json
                 json_data = json.load(fp)  # 读取整个JSON内容
+                # 检查JSON数据
+                if check_json_file(json_data):
+                    # print(f"json_data")
+                    print(f"json_data: {json_data}")
+                    return 
+                # 如果需要存储为字符串，可以在这里转换
+                json_str = json.dumps(json_data, ensure_ascii=False)
+                
         else:
             print(f"No corresponding JSON file found for {img_path}")
             return
         
-            
-        # 返回提取的信息
-        return [md5, width, height, image, json_data]
+        # 返回时使用json_str
+        return [md5, width, height, image, json_str]
     
     except Exception as e:
         print(f'Error processing {img_path}: {e}')
@@ -110,7 +142,7 @@ if __name__ == '__main__':
     pool = Pool(6)
     
 
-    make_arrow_from_dir("/nieta/soso/New_Folder/danbooru_images_filtered_", "/nieta/data_arrow/danbooru_images_filtered_arrow")
+    make_arrow_from_dir("/nieta/soso/wlop大神鬼刀_4k_filtered_webp_untar", "/nieta/data_arrow/wlop大神鬼刀_4k_filtered_webp_untar_arrow")
 
     # if len(sys.argv) != 4:
     #     print("Usage: python hydit/data_loader/csv2arrow.py ${csv_root} ${output_arrow_data_path} ${pool_num}")

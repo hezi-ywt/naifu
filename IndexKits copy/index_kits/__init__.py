@@ -3,11 +3,12 @@
 #     MultiResolutionBucketIndexV2, MultiMultiResolutionBucketIndexV2,
 #     build_multi_resolution_bucket
 # )
-
+from .bucket_old import build_multi_resolution_bucket
 from .bucket import (
     MultiIndexV2,
     MultiResolutionBucketIndexV2, MultiMultiResolutionBucketIndexV2,
-    build_multi_resolution_bucket
+    MultiBaseResolutionBucketIndexV2,
+    build_multi_base_resolution_bucket
 )
 from .bucket import Resolution, ResolutionGroup
 from .indexer import IndexV2Builder, ArrowIndexV2
