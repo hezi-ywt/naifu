@@ -138,8 +138,8 @@ def filter_dir(img_dir):
             pass
 
 def main():
-    img_dir = "/mnt/data/danbooru2024-webp-4Mpixel/images_out"
-    out_dir = "/home1/qbs/my_program1/sd-scripts/projects/data1"
+    img_dir = "/mnt/public/dataset/danbooru2024-webp-4Mpixel/images_untar"
+    out_dir = "/mnt/public/dataset/danbooru2024-webp-4Mpixel/images_untar_trash"
     ratio = 4
     filter_dir(img_dir)
 

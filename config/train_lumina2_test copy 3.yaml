@@ -15,18 +15,18 @@ trainer:
   checkpointing: false
   model_path: /mnt/public/Lumina-Image-2.0
   batch_size: 2
-  seed: 19990326
+  seed: 1122
   wandb_id: "lumina2_test"
   use_xformers: false
-  accumulate_grad_batches: 8
+  accumulate_grad_batches: 32
   grad_clip: 2
   gradient_clip_val: 2
   save_format: original
-  checkpoint_dir: /mnt/public/lu2/results_cosine_2e-4_bs64_infsssssss
+  checkpoint_dir: /mnt/public/lu2/results_cosine_2e-4_bs64_infsssss
   checkpoint_freq: 1
   save_weights_only: true
   max_epochs: 20
-  checkpoint_steps: 1000
+  checkpoint_steps: 250
   max_steps: -1
   resolution: 1024
 
@@ -58,17 +58,15 @@ dataset:
 optimizer:
   name: torch.optim.AdamW
   params:
-    lr: 1e-4
+    lr: 8e-5
     weight_decay: 1e-2
 
 scheduler:
-  name: transformers.get_cosine_schedule_with_warmup
+  name: transformers.get_constant_schedule_with_warmup
   params:
     num_warmup_steps: 1000
-    num_training_steps: 400000  # 总训练步数
-    num_cycles: 0.5  # cosine 周期数
     last_epoch: -1
-    
+
 sampling:
   enabled: false
   use_wandb: true

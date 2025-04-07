@@ -23,7 +23,7 @@ def copy_json_to_directory(source_directory, target_directory):
                 source_file = os.path.join(root, file)
                 shutil.copy(source_file, target_directory)
                 
-def rename_files_with_pid(source_directory, target_directory):
+def rename_files_with_pid(source_directory, target_directory,ext=None):
     """
     从源目录复制文件到目标目录，并用文件名中的pid作为新文件名
     
@@ -36,6 +36,8 @@ def rename_files_with_pid(source_directory, target_directory):
     
     # 遍历源目录中的所有文件
     for root, dirs, files in os.walk(source_directory):
+        if ext is not None:
+            files = [file for file in files if file.lower().endswith(ext)]
         for file in files:
             # 尝试从文件名中提取pid
             pid_match = re.search(r'\[pid=(\d+)\]', file)
@@ -57,6 +59,10 @@ def rename_files_with_pid(source_directory, target_directory):
                 shutil.copy(source_file, target_file)
                 print(f"已复制 {file} 到 {new_filename}")
 
-copy_images_to_directory('/nieta/soso/New_Folder/danbooru_images_filtered', '/nieta/soso/New_Folder/danbooru_images_filtered_')
-copy_json_to_directory('/nieta/soso/New_Folder/danbooru_images_filtered_caption', '/nieta/soso/New_Folder/danbooru_images_filtered_')
-# rename_files_with_pid('/nieta/soso/New_Folder/shiertier_caption', '/nieta/soso/shiertier')
+image_ext = ('.webp', '.png', '.jpg', '.jpeg', '.gif', '.bmp')
+
+
+# copy_images_to_directory('/mnt/public/soso/shiertier', '/mnt/public/soso/shiertier_')
+copy_json_to_directory('/mnt/public/soso/nieta/soso/shiertierjson_pid_', '/mnt/public/soso/shiertier_2')
+
+# rename_files_with_pid('/mnt/public/soso/shiertier_', '/mnt/public/soso/shiertier_2', ext=image_ext)

@@ -38,10 +38,10 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
 
     if config.dataset.multireso:
         sampler = BlockDistributedSampler(dataset, num_replicas=world_size, rank=fabric.global_rank, seed=config.trainer.seed,
-                                          shuffle=False, drop_last=True, batch_size=config.trainer.batch_size)
+                                          shuffle=True, drop_last=True, batch_size=config.trainer.batch_size)
     else:
         sampler = DistributedSamplerWithStartIndex(dataset, num_replicas=world_size, rank=fabric.global_rank, seed=config.trainer.seed,
-                                                   shuffle=False, drop_last=True)
+                                                   shuffle=True, drop_last=True)
         
     dataloader = DataLoader(dataset, batch_size=config.trainer.batch_size, shuffle=False, sampler=sampler,
                         num_workers=config.dataset.num_workers, pin_memory=True, drop_last=True)
@@ -140,7 +140,7 @@ class SupervisedFineTune(Lumina2Model):
             None,
             snr_type=self.config.advanced.snr_type,
             do_shift=not self.config.advanced.no_shift,
-            seq_len=(train_res // 16) ** 2,
+            seq_len=(1024 // 16) ** 2,
             # seq_len=target_size//(16*16)
         )
 

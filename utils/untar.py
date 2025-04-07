@@ -57,8 +57,8 @@ def is_tar_file(file_path: Union[str, Path]) -> bool:
 
 if __name__ == "__main__":
     # extract_tar("/data/soso/ai_gen_sample.tar", "/data/soso/tpony_gen_sample")
-    dir = "/nieta/soso/wlop大神鬼刀_4k_filtered_webp"
-    output_dir = "/nieta/soso/wlop大神鬼刀_4k_filtered_webp_untar"
+    dir = "/mnt/public/danbooru/images"
+    output_dir = "/mnt/public/danbooru/images_untar"
     for file in os.listdir(dir):
         if file.endswith(".tar"):
             print(file)

@@ -257,6 +257,12 @@ class TextImageArrowStream(Dataset):
 
         if character_list is not None:
             if len(character_list) > 0 :
+                # for character in character_list:
+                #     if character in user_prompt:
+                #         return user_prompt
+                #     if character.replace("_", " ") in user_prompt:
+                #         return user_prompt
+                    
                 character_list = ", ".join(character_list)
 
                 '''
@@ -342,7 +348,9 @@ class TextImageArrowStream(Dataset):
                         "structural_summary",
                         "deviantart_commission_request",
                         "creation_instructional_summary",
-                        "doubao_caption_dict"
+                        "doubao_caption_dict",
+                        "gemini_caption_v2",
+                        "gemini_caption_v3",
                         ]
         meta_has = False
         for tag_key in tag_key_list:
@@ -364,7 +372,7 @@ class TextImageArrowStream(Dataset):
                             caption_dict[tag_key] = [self.system_prompt["danbooru"] , json_data[tag_key].replace("|||", ""), tag_key]
                         else:
                             caption_dict[tag_key] = [self.system_prompt["text"] , json_data[tag_key].replace("|||", ""), tag_key]
-                    elif tag_key == 'gemini_caption':
+                    elif 'gemini_caption_' in tag_key:
                         gemini_caption = json_data[tag_key]
                         
                         if isinstance(gemini_caption, dict):
@@ -372,18 +380,46 @@ class TextImageArrowStream(Dataset):
                                 if sub_tag_key in gemini_caption and gemini_caption[sub_tag_key] is not None:
                                     if len(gemini_caption[sub_tag_key]) > 30:
                                         key = tag_key + "_" + sub_tag_key
-                                        if tag_key == "regular_summary":
+                                        if sub_tag_key == "regular_summary":
                                             if random.random() < 0.5:
                                                 caption_dict[key] = [self.system_prompt["caption"] , gemini_caption[sub_tag_key], key]
                                             else:
                                                 caption_dict[key] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]
+                                            
+                                            if random.random() < 0.5:
+                                                caption_dict[key+"_v2"] = [self.system_prompt["caption"] , gemini_caption[sub_tag_key], key]
+                                            else:
+                                                caption_dict[key+"_v2"] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]
+                                            if random.random() < 0.5:
+                                                caption_dict[key+"_v3"] = [self.system_prompt["caption"] , gemini_caption[sub_tag_key], key]
+                                            else:
+                                                caption_dict[key+"_v3"] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]
+                                                
                                         else:
                                             caption_dict[key] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]
+                        
                         elif isinstance(gemini_caption, str):
                             if len(gemini_caption) > 30:
                                 caption_dict[tag_key] = [self.system_prompt["text"] , gemini_caption, tag_key]
                         else:
                             continue
+                        
+                    elif tag_key=="gemini_caption":
+                        gemini_caption = json_data[tag_key]
+                        
+                        if isinstance(gemini_caption, dict):
+                            for sub_tag_key in tag_key_list:
+                                if sub_tag_key in gemini_caption and gemini_caption[sub_tag_key] is not None:
+                                    if len(gemini_caption[sub_tag_key]) > 30:
+                                        key = tag_key + "_" + sub_tag_key
+                                        if sub_tag_key == "regular_summary":
+                                            if random.random() < 0.5:
+                                                caption_dict[key] = [self.system_prompt["caption"] , gemini_caption[sub_tag_key], key]
+                                            else:
+                                                caption_dict[key] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]                           
+                                        else:
+                                            caption_dict[key] = [self.system_prompt["text"] , gemini_caption[sub_tag_key], key]
+                                            
                     elif tag_key == 'doubao_caption_dict':
                         gemini_caption = json_data[tag_key]
                         if isinstance(gemini_caption, dict):
@@ -391,7 +427,7 @@ class TextImageArrowStream(Dataset):
                                 if sub_tag_key in gemini_caption and gemini_caption[sub_tag_key] is not None:
                                     if len(gemini_caption[sub_tag_key]) > 30:
                                         key = tag_key + "_" + sub_tag_key
-                                        if tag_key == "regular_summary":
+                                        if sub_tag_key == "regular_summary":
                                             if random.random() < 0.5:
                                                 caption_dict[key] = [self.system_prompt["caption"] , gemini_caption[sub_tag_key], key]
                                             else:
@@ -417,6 +453,7 @@ class TextImageArrowStream(Dataset):
                             caption_dict[tag_key] = [self.system_prompt["text"] , json_data[tag_key], tag_key]
                         else:
                             continue
+                        
         if len(caption_dict) == 0:
             self.log_fn(f"get_original_text | No caption found, use default caption")
             if random.random() < 0.5:
@@ -426,6 +463,7 @@ class TextImageArrowStream(Dataset):
 
                        
         text = random.choice(list(caption_dict.values()))
+
         if random.random() < 0.01:
             if meta_has:
                 try:
@@ -434,14 +472,21 @@ class TextImageArrowStream(Dataset):
                     caption = text[0] + text[1]
             else:
                 caption = text[0] + text[1]
+        elif random.random() < 0.001:
+            if meta_has and "gemini_caption_v2" not in text[2]:
+                caption = self.add_character_artist(character_list, artist_list, text[1])
+            else:
+                caption = text[1]
+
         else:
-            if random.random() < 0.1:
+            if random.random() < 0.3:
                 caption = text[0] + text[1]
             else:
-                if meta_has:
+                if meta_has and "gemini_caption_v2" not in text[2]:
                     caption = text[0] + self.add_character_artist(character_list, artist_list, text[1])
                 else:
                     caption = text[0] + text[1]
+
         if random.random() < 0.01:
             
             print(f"get_original_text | type: {text[2]} | text: {caption}")

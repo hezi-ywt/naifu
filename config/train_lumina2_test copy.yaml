@@ -3,29 +3,29 @@ target: modules.lumina2_model_train.setup
 adaptive_loss_weight: True
 
 model: 
-  tokenizer_path: /mnt/public/Lumina-Image-2.0/tokenizer
-  text_encoder_path: /mnt/public/Lumina-Image-2.0/text_encoder
+  tokenizer_path: /nieta/Lumina-Image-2.0/tokenizer
+  text_encoder_path: /nieta/Lumina-Image-2.0/text_encoder
   model_name: NextDiT_2B_GQA_patch2_Adaln_Refiner
   qk_norm: True
-  resume: /mnt/public/lu2/results_cosine_2e-4_bs64_infssss/checkpoint-e78_s77912
+  resume: /nieta/Lumina-Image-2.0/results_cosine_2e-4_bs64_sssssss/checkpoint-e1_s5000
   
 trainer:
   auto_resume: false
-  init_from: /mnt/public/Lumina-Image-2.0
+  init_from: /nieta/Lumina-Image-2.0
   checkpointing: false
-  model_path: /mnt/public/Lumina-Image-2.0
+  model_path: /nieta/Lumina-Image-2.0
   batch_size: 2
-  seed: 19990326
+  seed: 231122
   wandb_id: "lumina2_test"
   use_xformers: false
-  accumulate_grad_batches: 8
+  accumulate_grad_batches: 4
   grad_clip: 2
   gradient_clip_val: 2
   save_format: original
-  checkpoint_dir: /mnt/public/lu2/results_cosine_2e-4_bs64_infsssssss
+  checkpoint_dir: /nieta/Lumina-Image-2.0/results_cosine_2e-4_bs64_ssssssss
   checkpoint_freq: 1
   save_weights_only: true
-  max_epochs: 20
+  max_epochs: 10000
   checkpoint_steps: 1000
   max_steps: -1
   resolution: 1024
@@ -34,7 +34,7 @@ advanced:
   # snr_type: "uniform"
   snr_type: "lognorm"
   no_shift: true
-  train_res: [1024]
+  train_res: [1024, 256]
   # vae_encode_batch_size: 8
   use_ema: true
   
@@ -58,7 +58,7 @@ dataset:
 optimizer:
   name: torch.optim.AdamW
   params:
-    lr: 1e-4
+    lr: 5e-5
     weight_decay: 1e-2
 
 scheduler:
@@ -68,16 +68,16 @@ scheduler:
     num_training_steps: 400000  # 总训练步数
     num_cycles: 0.5  # cosine 周期数
     last_epoch: -1
-    
+
 sampling:
-  enabled: false
+  enabled: true
   use_wandb: true
   seed: 1234
   height: 832
   width: 1024
-  every_n_steps: 1000
+  every_n_steps: 1000000
   every_n_epochs: 1
-  save_dir: "samples/lumina2_cosine_2e-4_bs64_1024_256_sssss"
+  save_dir: "samples/lumina2_cosine_2e-4_bs64_1024_256_ssssssssssss"
   prompts:
     # - "You are an assistant designed to generate high-quality images with the highest degree of image-text alignment based on textual prompts. <Prompt Start> A close-up shot of left_heavy, a middle-aged Black man with a short beard, wearing a white and gray spacesuit with patches and a large helmet with a transparent visor, looking to the right, and with a neutral expression, sitting and facing towards the right. The background is dark with blurred elements, including some indistinct green lights."
     # - "You are an assistant designed to generate high-quality images with the highest degree of image-text alignment based on textual prompts. <Prompt Start> A medium shot of a middle-aged white man, left_heavy, with short dark curly hair, wearing glasses, a white collared shirt, and a black tie and a dark watch, has his hand on his forehead and is looking down at a paper he is holding in his other hand. He appears to be focused and somewhat concerned. The background shows an office space with window blinds, a desk with papers, pens and a computer and a view of a city outside."

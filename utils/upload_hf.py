@@ -10,8 +10,8 @@ from hfutils.operate import upload_file_to_file, upload_directory_as_archive, up
 
 repo_id = 'heziiiii/lu2'
 
-local_file = '/nieta/Lumina-Image-2.0/results_cosine_2e-4_bs64_ssssssss/checkpoint-e2_s9592/consolidated.00-of-01.pth'
-file_in_repo = 'results_cosine_2e-4_bs64_ssssssss/checkpoint-e2_s9592/consolidated.00-of-01.pth'
+local_file = '/mnt/public/lu2/results_cosine_2e-4_bs64_infsss/checkpoint-e12_s23973/consolidated.00-of-01.pth'
+file_in_repo = 'results_cosine_2e-4_bs64_infssss/checkpoint-e12_s23973/consolidated.00-of-01.pth'
 upload_file_to_file(
     local_file=local_file,
     repo_id=repo_id,

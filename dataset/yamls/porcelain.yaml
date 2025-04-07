@@ -1,28 +1,63 @@
 source:
-    - /nieta/data_arrow/tpony_arrow/*.arrow:
-        repeat: 1
-    - /nieta/data_arrow/danbooru_images_hy_artist_json_packed_untar_arrow1/*.arrow:
+    - /mnt/public/data_arrow/danbooru_images_hy_artist_untar_arrow/*.arrow:
         repeat: 2
-    - /nieta/data_arrow/danbooru_images_filtered_arrow1/*.arrow:
+    - /mnt/public/data_arrow/古风v3_untar_arrow/*.arrow:
         repeat: 1
-    - /nieta/data_arrow/shiertier_arrow/*.arrow:
+    - /mnt/public/data_arrow/半身刻画脸_untar_arrow/*.arrow:
         repeat: 1
-    - /nieta/data_arrow/shiertier_filtered_arrow/*.arrow:
+    - /mnt/public/data_arrow/乙女美男_v1_untar_arrow/*.arrow:
         repeat: 2
-    - /nieta/data_arrow/乙女美男_v1_untar_arrow/*.arrow:
+    - /mnt/public/data_arrow/古风v1_untar_arrow/*.arrow:
         repeat: 1
-    - /nieta/data_arrow/古风v1_untar_arrow/*.arrow:
+    - /mnt/public/data_arrow/古风v2_untar_arrow/*.arrow:
         repeat: 1
-    - /nieta/data_arrow/古风v2_untar_arrow/*.arrow:
+    - /mnt/public/data_arrow/shiertier_2_arrow/*.arrow:
+        repeat: 5
+    - /mnt/public/data_arrow/danbooru2024-webp-newest-4Mpixel_arrow/*.arrow:
         repeat: 1
-    - /nieta/data_arrow/古风场景_untar_arrow/*.arrow:
+    - /mnt/public/data_arrow/奈塔训练集_arrow/*.arrow:
+        repeat: 10
+    - /mnt/public/data_arrow/奈塔精选写真集_arrow/*.arrow:
+        repeat: 10
+    - /mnt/public/data_arrow/wlop大神鬼刀_4k_filtered_webp/*.arrow:
+        repeat: 10
+    - /mnt/public/data_arrow/scenary_wallpapers_arrow/*.arrow:
         repeat: 1
-    - /nieta/data_arrow/半身刻画脸_untar_arrow/*.arrow:
-        repeat: 1
-    - /nieta/data_arrow/wlop大神鬼刀_4k_filtered_webp_untar_arrow/*.arrow:
-        repeat: 2
+    - /mnt/public/data_arrow/米山舞_arrow/*.arrow:
+        repeat: 10
+    
+    # - /nieta/data_arrow/danbooru_images_filtered_arrow1/*.arrow:
+    #     repeat: 1
+    # - /nieta/data_arrow/shiertier_arrow/*.arrow:
+    #     repeat: 1
+    # - /nieta/data_arrow/shiertier_filtered_arrow/*.arrow:
+    #     repeat: 2
+    # - /nieta/data_arrow/乙女美男_v1_untar_arrow/*.arrow:
+    #     repeat: 1
+    # - /nieta/data_arrow/古风v1_untar_arrow/*.arrow:
+    #     repeat: 1
+    # - /nieta/data_arrow/古风v2_untar_arrow/*.arrow:
+    #     repeat: 1
+    # - /nieta/data_arrow/古风场景_untar_arrow/*.arrow:
+    #     repeat: 1
+    # - /nieta/data_arrow/半身刻画脸_untar_arrow/*.arrow:
+    #     repeat: 1
+    # - /nieta/data_arrow/wlop大神鬼刀_4k_filtered_webp_untar_arrow/*.arrow:
+    #     repeat: 2
 
 
 
 
+filter:
+    column:
+        -   name: height
+            type: int
+            action: ge
+            target: 768
+            default: 1024
+        -   name: width
+            type: int
+            action: ge
+            target: 768
+            default: 1024
 
