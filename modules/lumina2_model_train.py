@@ -10,9 +10,10 @@ from lightning.pytorch.utilities.model_summary import ModelSummary
 from torch.utils.data import DataLoader
 from IndexKits.index_kits.sampler import DistributedSamplerWithStartIndex, BlockDistributedSampler
 from data_loader.arrow2_load_stream_ import TextImageArrowStream
+from data_loader.masked_arrow_stream import MaskedTextImageArrowStream
 
 from modules.lumina2_model import Lumina2Model
-from models.lumina.transport import create_transport
+from models.lumina.transport import create_transport, calc_masked_training_losses
 
 import random
 import math
@@ -26,7 +27,27 @@ def setup(fabric: pl.Fabric, config: OmegaConf) -> tuple:
 
     world_size = fabric.world_size
     logger.info(f"loading dataset from {config.dataset.index_file}")
-    dataset = TextImageArrowStream(args="args",
+    
+    # 检查是否使用带蒙版的数据集
+    use_masked_dataset = config.dataset.get("use_masked_dataset", False)
+    mask_field = config.dataset.get("mask_field", "mask_path")
+    
+    if use_masked_dataset:
+        logger.info(f"使用带蒙版的数据集，蒙版字段为: {mask_field}")
+        dataset = MaskedTextImageArrowStream(
+                                   args="args",
+                                   resolution=config.trainer.resolution,
+                                   random_flip=config.dataset.random_flip,
+                                   log_fn=logger.info,
+                                   index_file=config.dataset.index_file,
+                                   multireso=config.dataset.multireso,
+                                   batch_size=config.trainer.batch_size,
+                                   world_size=world_size,
+                                   mask_field=mask_field
+                                   )
+    else:
+        dataset = TextImageArrowStream(
+                                   args="args",
                                    resolution=config.trainer.resolution,
                                    random_flip=config.dataset.random_flip,
                                    log_fn=logger.info,
@@ -108,30 +129,11 @@ class SupervisedFineTune(Lumina2Model):
         # base_size = batch["base_size"][0]
         images = batch["pixels"].to(self.target_device)       
         prompts = batch["prompts"]
-        # target_size = base_size
-        # if base_size > 1024*1024:
-        #     if random.random() < 0.5:
-        #         target_size = 1024*1024
         
-        #         mode_list = ['nearest', 'bilinear', 'bicubic', 'area']
-        #         mode = random.choice(mode_list)
-        #         scale_factor = math.sqrt(target_size/base_size)
-        #         images = F.interpolate(images, scale_factor=scale_factor,
-        #                             mode=mode, align_corners=None if mode in ['nearest', 'area'] else False)
-
-        # for train_res in self.config.advanced.get("train_res", [1024]):
-            
-            
-            # if base_size > 1024*1024:
-            #     if random.random() < 0.5:
-            #         target_size = 1024*1024
-            
-            #         mode_list = ['nearest', 'bilinear', 'bicubic', 'area']
-            #         mode = random.choice(mode_list)
-            #         scale_factor = 0.75
-            #         images = F.interpolate(images, scale_factor=scale_factor,
-            #                             mode=mode, align_corners=None if mode in ['nearest', 'area'] else False)
-
+        # 检查是否有蒙版图片
+        masks = batch.get("masks", None)
+        mask_weight = self.config.advanced.get("mask_weight", 0.8)  # 从配置中获取蒙版权重参数，默认为0.8
+        
         trans = create_transport(
             "Linear",
             "velocity",
@@ -153,22 +155,50 @@ class SupervisedFineTune(Lumina2Model):
             proportion_empty_prompts=0.1
         )
 
-        # 对图像进行VAE编码
         latents = self.encode_images(images)  # [B, C, H, W]
-
-        # muti resolution
-        # if len(latents.shape) == 3:
-        #     latents = latents.unsqueeze(0)
-        # muti resolution
-        # latents_mb_256 = [self.apply_average_pool(x, 4) for x in latents]
+        
+        # 如果有蒙版
+        latent_masks = None
+        if masks is not None:
+            # [B, 1, H, W]
+            masks = masks.to(self.target_device)
+            
+            # 下采样
+            with torch.no_grad():
+                masks_scaled = masks * 2.0 - 1.0
+                
+                # 
+                # 只形状匹配，不关心内容变化，所以只平均池化来下采样
+                latent_masks = F.interpolate(
+                    masks, 
+                    size=(latents.shape[2], latents.shape[3]), 
+                    mode='bilinear', 
+                    align_corners=False
+                )
+                
+                # 确保值在 [0,1] 范围内
+                latent_masks = torch.clamp(latent_masks, 0.0, 1.0)
 
         model_kwargs = dict(cap_feats=prompt_embeds, cap_mask=prompt_masks)
-        loss_dict = trans.training_losses(self.model, latents, model_kwargs)
-        # loss_dict_256 = trans.training_losses(self.model, latents_mb_256, model_kwargs)
+        
+        loss_dict = calc_masked_training_losses(
+            trans, 
+            self.model, 
+            latents, 
+            mask=latent_masks, 
+            mask_weight=mask_weight, 
+            model_kwargs=model_kwargs
+        )
 
         loss_1024 = loss_dict["loss"].sum() / self.batch_size
-        # loss_256 = loss_dict_256["loss"].sum() / self.batch_size
-        loss = loss_1024 
+        loss = loss_1024
+        
+        # 蒙版内部和外部损失
+        if latent_masks is not None and "inside_loss" in loss_dict and "outside_loss" in loss_dict:
+            inside_loss = loss_dict["inside_loss"].sum() / self.batch_size
+            outside_loss = loss_dict["outside_loss"].sum() / self.batch_size
+            self.log("inside_loss", inside_loss, prog_bar=True)
+            self.log("outside_loss", outside_loss, prog_bar=True)
 
         # 记录训练损失
         self.log("train_loss", loss, prog_bar=True)
